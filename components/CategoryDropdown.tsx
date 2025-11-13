@@ -8,11 +8,12 @@ interface CategoryDropdownProps {
   displayAsIconButton?: boolean;
 }
 
-const FilterIcon: React.FC<{className?: string}> = ({ className }) => (
+const ListBulletIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 12.414V17a1 1 0 01-1.447.894l-2-1A1 1 0 018 16v-3.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+      <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
     </svg>
 );
+
 
 const ChevronDownIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor">
@@ -44,7 +45,7 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({ categories, selecte
   const selectedCategoryLabel = selectedCategory === 'all' ? 'Все категории' : selectedCategory;
 
   const dropdownMenuClasses = "absolute z-10 mt-1 bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm";
-  const dropdownMenuPosition = displayAsIconButton ? "right-0 w-56" : "w-full";
+  const dropdownMenuPosition = displayAsIconButton ? "left-0 w-56" : "w-full";
 
   return (
     <div className={`relative ${displayAsIconButton ? '' : 'w-full sm:w-64'}`} ref={dropdownRef}>
@@ -57,10 +58,10 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({ categories, selecte
           className="p-2 rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           aria-haspopup="listbox"
           aria-expanded={isOpen}
-          aria-label="Фильтр по категориям"
-          title="Фильтр по категориям"
+          aria-label="Выбрать категорию"
+          title="Выбрать категорию"
         >
-          <FilterIcon className="w-6 h-6" />
+          <ListBulletIcon className="w-6 h-6" />
         </button>
       ) : (
         <button
