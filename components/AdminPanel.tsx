@@ -7,6 +7,7 @@ import ProductTable from './ProductTable';
 import AdminOrders from './AdminOrders';
 import AdminCustomers from './AdminCustomers';
 import WholesaleProductTable from './WholesaleProductTable';
+import AdminAnalytics from './AdminAnalytics';
 
 
 // Make TypeScript aware of the XLSX library loaded from the CDN
@@ -46,7 +47,7 @@ const unitOptions: ProductUnit[] = ['kg', 'g', 'pcs', 'l'];
 const packagingOptions: ProductPackaging[] = ['головка', 'упаковка', 'штука', 'банка', 'ящик'];
 
 const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, allUsers, onAddProduct, onBulkAddProducts, onDeleteProduct, onCycleStatus, onUpdatePortions, onUpdatePrices, onUpdateProductPriceTiers, onUpdateProductCostPrice, onUpdateUspPrices, onBulkUpdateUspPrices, onBulkUpdateWholesalePrices, onUpdateUspMarkupFlags, onUpdateUnitValue, onUpdateDetails, onUpdateImages, onUpdateCategories, onUpdateOrderStatus, onAddUser, onDeleteUser, onUpdateUserByAdmin, onCycleBadge }) => {
-    const [activeTab, setActiveTab] = useState<'pricelist' | 'add' | 'table' | 'orders' | 'import' | 'customers' | 'importSheets' | 'wholesale_pricelist'>('pricelist');
+    const [activeTab, setActiveTab] = useState<'pricelist' | 'add' | 'table' | 'orders' | 'import' | 'customers' | 'importSheets' | 'wholesale_pricelist' | 'analytics'>('pricelist');
     // Form state
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -392,7 +393,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
         reader.readAsArrayBuffer(file);
     };
 
-    const TabButton: React.FC<{tabId: 'pricelist' | 'add' | 'table' | 'orders' | 'import' | 'customers' | 'importSheets' | 'wholesale_pricelist', children: React.ReactNode}> = ({tabId, children}) => {
+    const TabButton: React.FC<{tabId: 'pricelist' | 'add' | 'table' | 'orders' | 'import' | 'customers' | 'importSheets' | 'wholesale_pricelist' | 'analytics', children: React.ReactNode}> = ({tabId, children}) => {
         const isActive = activeTab === tabId;
         return (
             <button
@@ -453,6 +454,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
                     <TabButton tabId="wholesale_pricelist">Оптовый прайс</TabButton>
                     <TabButton tabId="orders">Заказы</TabButton>
                     <TabButton tabId="customers">Покупатели</TabButton>
+                    <TabButton tabId="analytics">Аналитика</TabButton>
                     <TabButton tabId="add">Добавить товар</TabButton>
                     <TabButton tabId="import">Импорт Excel</TabButton>
                     <TabButton tabId="importSheets">Импорт Sheets</TabButton>
@@ -630,6 +632,16 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
                         orders={orders}
                         users={allUsers}
                         onUpdateStatus={onUpdateOrderStatus}
+                    />
+                </div>
+            )}
+            
+            {activeTab === 'analytics' && (
+                <div className="mt-6">
+                    <AdminAnalytics
+                        orders={orders}
+                        products={products}
+                        users={allUsers}
                     />
                 </div>
             )}
