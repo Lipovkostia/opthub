@@ -563,7 +563,7 @@ const ProductItem: React.FC<ProductItemProps> = ({ product, onAddToCart, isExpan
                     )}
                 </div>
             )}
-            <div className="flex flex-col flex-grow gap-1 w-full min-w-0">
+            <div className="flex flex-col flex-grow gap-1 min-w-0">
                 <div className="flex justify-between items-start gap-2">
                     <button 
                         onClick={() => isAdminView ? setIsDetailsEditing(!isDetailsEditing) : onToggleExpand(product.id)}
