@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { User, Order } from '../types';
 
@@ -116,7 +117,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ user, orders, onClose, onUp
                             {orders.length > 0 ? (
                                 <div className="space-y-6">
                                     {orders.map(order => (
-                                        <div key={order.id} className="border rounded-lg p-4">
+                                        <div key={order.id} className="border rounded-lg p-4 [content-visibility:auto] [contain-intrinsic-size:120px]">
                                             <div className="flex justify-between items-center mb-3 pb-3 border-b">
                                                 <div>
                                                     <p className="font-semibold">Заказ от {new Date(order.date).toLocaleDateString('ru-RU')}</p>

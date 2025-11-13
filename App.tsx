@@ -681,7 +681,7 @@ const App: React.FC = () => {
     <div className="bg-gray-50 min-h-screen font-sans">
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
                 <button
                     ref={cartIconRef}
                     onClick={() => setIsCartOpen(true)}
@@ -696,19 +696,19 @@ const App: React.FC = () => {
                     )}
                 </button>
                 {cartItems.length > 0 && (
-                     <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 border-l border-gray-200 pl-2 sm:pl-4">
-                        <div>
-                            <div className="text-gray-500">Позиций</div>
-                            <div className="font-semibold">{cartItems.length}</div>
+                     <div className="flex flex-col text-xs tabular-nums text-gray-600 border-l border-gray-200 pl-3">
+                        <div className="flex justify-between items-baseline gap-3">
+                            <span className="text-gray-500">Позиций:</span>
+                            <span className="font-semibold">{cartItems.length}</span>
                         </div>
-                        <div>
-                            <div className="text-gray-500">Вес</div>
-                             <div className="font-semibold">~{totalCartWeight.toFixed(2)} кг</div>
+                        <div className="flex justify-between items-baseline gap-3">
+                            <span className="text-gray-500">Вес, кг:</span>
+                            <span className="font-semibold">~{totalCartWeight.toFixed(2)}</span>
                         </div>
-                         <div>
-                             <div className="text-gray-500">Сумма</div>
-                             <div className="font-semibold">{totalCartSum.toLocaleString('ru-RU')} ₽</div>
-                         </div>
+                        <div className="flex justify-between items-baseline gap-3">
+                            <span className="text-gray-500">Сумма, ₽:</span>
+                            <span className="font-semibold">{totalCartSum.toLocaleString('ru-RU')}</span>
+                        </div>
                     </div>
                 )}
             </div>

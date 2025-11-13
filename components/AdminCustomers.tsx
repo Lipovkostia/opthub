@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { User, Order, CustomerType } from '../types';
 
@@ -191,50 +192,55 @@ const AdminCustomers: React.FC<AdminCustomersProps> = ({ users, orders, onAddUse
                 </div>
                 <div className="overflow-x-auto relative shadow-md sm:rounded-lg">
                     <table className="w-full text-sm text-left text-gray-500">
-                         <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-100">
                             <tr>
                                 <th scope="col" className="py-3 px-6">Логин</th>
                                 <th scope="col" className="py-3 px-6">Имя</th>
                                 <th scope="col" className="py-3 px-6">Тип покупателя</th>
-                                <th scope="col" className="py-3 px-6">Кол-во заказов</th>
+                                <th scope="col" className="py-3 px-6 text-center">Заказов</th>
                                 <th scope="col" className="py-3 px-6 text-right">Действия</th>
                             </tr>
                         </thead>
                         <tbody>
                             {customers.map(user => (
                                 <React.Fragment key={user.id}>
-                                    <tr className="bg-white border-b hover:bg-gray-50">
-                                        <td className="py-4 px-6 font-medium text-gray-900 whitespace-nowrap">{user.email}</td>
+                                    <tr className="bg-white border-b hover:bg-gray-50 [content-visibility:auto] [contain-intrinsic-size:50px]">
+                                        <td className="py-4 px-6 font-medium text-gray-900">{user.email}</td>
                                         <td className="py-4 px-6">{user.name || '-'}</td>
                                         <td className="py-4 px-6">
-                                            <select 
-                                                value={user.customerType || 'Розничный'} 
+                                            <select
+                                                value={user.customerType || 'Розничный'}
                                                 onChange={(e) => handleCustomerTypeChange(user.id, e.target.value as CustomerType)}
-                                                className="block w-full px-2 py-1.5 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                className="block w-full px-2 py-1 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                             >
                                                 {customerTypes.map(type => <option key={type} value={type}>{type}</option>)}
                                             </select>
                                         </td>
                                         <td className="py-4 px-6 text-center">{ordersByUser[user.id] || 0}</td>
                                         <td className="py-4 px-6 text-right">
-                                            <button 
-                                                onClick={() => setExpandedUserId(prevId => prevId === user.id ? null : user.id)}
-                                                className="text-indigo-600 hover:text-indigo-900 mr-4 inline-flex items-center gap-1"
-                                                title="Редактировать данные"
-                                            >
-                                                <PencilIcon className="w-4 h-4" />
-                                                <span>{expandedUserId === user.id ? 'Закрыть' : 'Редакт.'}</span>
-                                            </button>
-                                            <button onClick={() => onDeleteUser(user.id)} className="text-red-500 hover:text-red-700 inline-flex" title="Удалить пользователя">
-                                                <TrashIcon className="w-5 h-5"/>
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                 <button
+                                                    onClick={() => setExpandedUserId(expandedUserId === user.id ? null : user.id)}
+                                                    className="p-2 text-gray-500 hover:text-indigo-600 rounded-full hover:bg-gray-100"
+                                                    aria-label={`Редактировать ${user.email}`}
+                                                 >
+                                                    <PencilIcon className="w-5 h-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => onDeleteUser(user.id)}
+                                                    className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-gray-100"
+                                                    aria-label={`Удалить ${user.email}`}
+                                                >
+                                                    <TrashIcon className="w-5 h-5"/>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                     {expandedUserId === user.id && (
-                                        <tr className="bg-gray-50 border-b">
-                                            <td colSpan={5} className="p-0">
-                                                <UserEditor 
-                                                    user={user} 
+                                        <tr className="bg-gray-50">
+                                            <td colSpan={5}>
+                                                <UserEditor
+                                                    user={user}
                                                     onSave={(updates) => handleSaveUserDetails(user.id, updates)}
                                                     onCancel={() => setExpandedUserId(null)}
                                                 />

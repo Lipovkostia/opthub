@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Order, User, OrderStatus } from '../types';
 
@@ -79,7 +80,7 @@ const AdminOrders: React.FC<AdminOrdersProps> = ({ orders, users, onUpdateStatus
                         const user = userMap[order.userId];
                         const isExpanded = expandedOrderId === order.id;
                         return (
-                            <div key={order.id} className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                            <div key={order.id} className="bg-white border border-gray-200 rounded-lg shadow-sm [content-visibility:auto] [contain-intrinsic-size:80px]">
                                 <button 
                                     onClick={() => handleToggleExpand(order.id)}
                                     className="w-full text-left p-4 focus:outline-none"
