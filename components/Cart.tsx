@@ -4,14 +4,21 @@ import { CartItem, ProductPortion, ProductUnit } from '../types';
 interface CartProps {
   cartItems: CartItem[];
   onRemoveItem: (cartId: string) => void;
+  onUpdateItemQuantity: (cartId: string, newQuantity: number) => void;
   onClearCart: () => void;
   onClose: () => void;
   onPlaceOrder: () => 'placed' | undefined;
 }
 
-const CartIcon: React.FC<{className?: string}> = ({className}) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+const TruckIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M1 17h2.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 17h5.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 17h2.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M1 12h12v5H1z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 12l3-4h5v9h-8v-5z" />
+        <circle cx="5" cy="19" r="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="16" cy="19" r="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
 );
 
@@ -34,7 +41,7 @@ const XIcon: React.FC<{className?: string}> = ({className}) => (
 );
 
 
-const Cart: React.FC<CartProps> = ({ cartItems, onRemoveItem, onClearCart, onClose, onPlaceOrder }) => {
+const Cart: React.FC<CartProps> = ({ cartItems, onRemoveItem, onUpdateItemQuantity, onClearCart, onClose, onPlaceOrder }) => {
   const [orderStatus, setOrderStatus] = useState<'idle' | 'placed'>('idle');
 
   const total = useMemo(() => {
@@ -90,7 +97,7 @@ const Cart: React.FC<CartProps> = ({ cartItems, onRemoveItem, onClearCart, onClo
       {/* Cart Header */}
       <div className="flex items-center justify-between border-b p-4 flex-shrink-0">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <CartIcon className="w-7 h-7" />
+            <TruckIcon className="w-7 h-7" />
             Корзина
         </h2>
         <button onClick={onClose} className="p-2 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -103,26 +110,43 @@ const Cart: React.FC<CartProps> = ({ cartItems, onRemoveItem, onClearCart, onClo
       <div className="flex-grow overflow-y-auto p-4">
         {cartItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
-              <CartIcon className="w-20 h-20 text-gray-300 mb-4"/>
+              <TruckIcon className="w-20 h-20 text-gray-300 mb-4"/>
               <p className="text-lg">Ваша корзина пуста</p>
               <p className="text-sm">Добавьте товары из каталога, чтобы сделать заказ.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {cartItems.map(item => (
-              <div key={item.cartId} className="flex items-start gap-4">
+              <div key={item.cartId} className="flex items-center gap-4">
                 <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-lg flex-shrink-0" />
                 <div className="flex-grow min-w-0">
                     <p className="font-semibold text-gray-800 truncate">{item.name}{getPortionLabel(item.portion)}</p>
-                    <p className="text-sm text-gray-600">
-                        {item.quantity} x {item.price.toLocaleString('ru-RU')} ₽
-                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                        <div className="flex items-center border border-gray-200 rounded-md">
+                           <button 
+                                onClick={() => onUpdateItemQuantity(item.cartId, item.quantity - 1)}
+                                className="px-2 py-0.5 text-xl font-semibold text-gray-600 hover:bg-gray-100 rounded-l-md focus:outline-none"
+                                aria-label={`Уменьшить количество ${item.name}`}
+                           >
+                               -
+                           </button>
+                           <span className="px-3 text-sm font-medium text-gray-800 tabular-nums">{item.quantity}</span>
+                           <button 
+                                onClick={() => onUpdateItemQuantity(item.cartId, item.quantity + 1)}
+                                className="px-2 py-0.5 text-xl font-semibold text-gray-600 hover:bg-gray-100 rounded-r-md focus:outline-none"
+                                aria-label={`Увеличить количество ${item.name}`}
+                           >
+                               +
+                           </button>
+                        </div>
+                         <button onClick={() => onRemoveItem(item.cartId)} className="ml-5 text-gray-400 hover:text-red-600" aria-label={`Удалить ${item.name} из корзины`}>
+                            <TrashIcon className="w-5 h-5"/>
+                        </button>
+                    </div>
                 </div>
-                <div className="flex flex-col items-end ml-auto flex-shrink-0">
+                <div className="text-right ml-auto flex-shrink-0">
                      <p className="font-semibold text-gray-800 whitespace-nowrap">{(item.price * item.quantity).toLocaleString('ru-RU')} ₽</p>
-                    <button onClick={() => onRemoveItem(item.cartId)} className="text-red-400 hover:text-red-600 mt-1" aria-label={`Удалить ${item.name}`}>
-                        <TrashIcon className="w-5 h-5"/>
-                    </button>
+                     <p className="text-sm text-gray-500 whitespace-nowrap">{item.price.toLocaleString('ru-RU')} ₽ / шт.</p>
                 </div>
               </div>
             ))}

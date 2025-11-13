@@ -6,7 +6,7 @@ import ProductItem from './ProductItem';
 
 interface ProductListProps {
   products: Product[];
-  onAddToCart: (product: Product, portion: ProductPortion, startRect: DOMRect) => void;
+  onAddToCart: (product: Product, portion: ProductPortion, startRect?: DOMRect) => void;
   isAdminView?: boolean;
   onDeleteProduct?: (productId: number) => void;
   onCycleStatus?: (productId: number) => void;
@@ -16,11 +16,13 @@ interface ProductListProps {
   onUpdateDetails?: (productId: number, newDetails: { name: string; description: string; unit: ProductUnit; packaging: ProductPackaging; }) => void;
   onUpdateImages?: (productId: number, newImageUrls: string[]) => void;
   onOpenGalleryModal?: (imageUrls: string[], index: number) => void;
+  showProductImages?: boolean;
   allCategories?: string[];
   onUpdateCategories?: (productId: number, newCategories: string[]) => void;
+  onCycleBadge?: (productId: number) => void;
 }
 
-const ProductList: React.FC<ProductListProps> = ({ products, onAddToCart, isAdminView = false, onDeleteProduct, onCycleStatus, onUpdatePortions, onUpdatePrices, onUpdateUnitValue, onUpdateDetails, onUpdateImages, onOpenGalleryModal, allCategories, onUpdateCategories }) => {
+const ProductList: React.FC<ProductListProps> = ({ products, onAddToCart, isAdminView = false, onDeleteProduct, onCycleStatus, onUpdatePortions, onUpdatePrices, onUpdateUnitValue, onUpdateDetails, onUpdateImages, onOpenGalleryModal, showProductImages = true, allCategories, onUpdateCategories, onCycleBadge }) => {
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
   const [galleryProductId, setGalleryProductId] = useState<number | null>(null);
 
@@ -60,8 +62,10 @@ const ProductList: React.FC<ProductListProps> = ({ products, onAddToCart, isAdmi
               onUpdateDetails={onUpdateDetails}
               onUpdateImages={onUpdateImages}
               onOpenGalleryModal={onOpenGalleryModal}
+              showProductImages={showProductImages}
               allCategories={allCategories}
               onUpdateCategories={onUpdateCategories}
+              onCycleBadge={onCycleBadge}
             />
           ))
         ) : (

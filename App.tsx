@@ -1,8 +1,6 @@
-
-
 import React, { useState, useMemo, useContext, useEffect, useRef } from 'react';
-import { Product, CartItem, Order, OrderItem, ProductPortion, ProductStatus, ProductUnit, ProductPackaging, User, OrderStatus } from './types';
-import CategoryFilter from './components/CategoryFilter';
+import { Product, CartItem, Order, OrderItem, ProductPortion, ProductStatus, ProductUnit, ProductPackaging, User, OrderStatus, ProductBadge, CustomerType } from './types';
+import CategoryDropdown from './components/CategoryDropdown';
 import ProductList from './components/ProductList';
 import Cart from './components/Cart';
 import AuthModal from './components/AuthModal';
@@ -19,22 +17,73 @@ const INITIAL_CATEGORIES = [
 ];
 
 const INITIAL_PRODUCTS: Product[] = [
-  { id: 1, name: 'Пармезан', pricePerUnit: 2500, categories: ['Твердые'], imageUrls: ['https://picsum.photos/id/282/400/300', 'https://picsum.photos/id/283/400/300', 'https://picsum.photos/id/284/400/300'], unitValue: 5.3, unit: 'kg', packaging: 'головка', description: 'Итальянский твердый сыр долгого созревания. Обладает ломкой текстурой и пикантным вкусом.', allowedPortions: ['whole', 'half', 'quarter'], status: ProductStatus.Available, priceOverridesPerUnit: {} },
-  { id: 2, name: 'Гауда', pricePerUnit: 1800, categories: ['Твердые'], imageUrls: ['https://picsum.photos/id/431/400/300', 'https://picsum.photos/id/432/400/300', 'https://picsum.photos/id/433/400/300'], unitValue: 2.1, unit: 'kg', packaging: 'головка', description: 'Популярный голландский сыр с мягким сливочным вкусом. Идеален для бутербродов и закусок.', allowedPortions: ['whole', 'half'], status: ProductStatus.Available, priceOverridesPerUnit: {} },
-  { id: 3, name: 'Бри', pricePerUnit: 2200, categories: ['Мягкие'], imageUrls: ['https://picsum.photos/id/435/400/300', 'https://picsum.photos/id/436/400/300', 'https://picsum.photos/id/437/400/300'], unitValue: 1.2, unit: 'kg', packaging: 'головка', description: 'Французский мягкий сыр с корочкой из белой плесени. Имеет нежный грибной аромат.', allowedPortions: ['whole'], status: ProductStatus.Available, priceOverridesPerUnit: {} },
-  { id: 4, name: 'Камамбер', pricePerUnit: 480, categories: ['Мягкие'], imageUrls: ['https://picsum.photos/id/312/400/300', 'https://picsum.photos/id/313/400/300', 'https://picsum.photos/id/314/400/300'], unitValue: 1, unit: 'pcs', packaging: 'упаковка', description: 'Знаменитый французский сыр с кремовой текстурой и насыщенным вкусом. Часто запекают целиком.', allowedPortions: ['whole'], status: ProductStatus.Available, priceOverridesPerUnit: {} },
-  { id: 5, name: 'Рокфор', pricePerUnit: 3500, categories: ['С плесенью', 'Козьи и овечьи'], imageUrls: ['https://picsum.photos/id/1060/400/300', 'https://picsum.photos/id/1061/400/300'], unitValue: 3.5, unit: 'kg', packaging: 'головка', description: 'Овечий сыр с голубой плесенью из Франции. Отличается острым, соленым вкусом и ярким ароматом.', allowedPortions: ['whole', 'half', 'quarter'], status: ProductStatus.Available, priceOverridesPerUnit: {} },
-  { id: 6, name: 'Горгонзола', pricePerUnit: 3200, categories: ['С плесенью'], imageUrls: ['https://picsum.photos/id/1080/400/300', 'https://picsum.photos/id/1081/400/300', 'https://picsum.photos/id/1082/400/300'], unitValue: 1.5, unit: 'kg', packaging: 'головка', description: 'Итальянский голубой сыр. Бывает двух видов: сладкий (dolce) и пикантный (piccante).', allowedPortions: ['whole', 'half'], status: ProductStatus.Available, priceOverridesPerUnit: {} },
-  { id: 7, name: 'Шевр', pricePerUnit: 560, categories: ['Козьи и овечьи'], imageUrls: ['https://picsum.photos/id/203/400/300', 'https://picsum.photos/id/204/400/300'], unitValue: 1, unit: 'pcs', packaging: 'штука', description: 'Французский козий сыр с характерной кислинкой и нежной, творожистой текстурой.', allowedPortions: ['whole'], status: ProductStatus.Available, priceOverridesPerUnit: {} },
-  { id: 8, name: 'Фета', pricePerUnit: 300, categories: ['Козьи и овечьи'], imageUrls: ['https://picsum.photos/id/375/400/300', 'https://picsum.photos/id/376/400/300', 'https://picsum.photos/id/377/400/300'], unitValue: 200, unit: 'g', packaging: 'упаковка', description: 'Греческий рассольный сыр из овечьего молока. Незаменимый ингредиент греческого салата.', allowedPortions: ['whole'], status: ProductStatus.Available, priceOverridesPerUnit: {} },
+  { id: 1, name: 'Пармезан', pricePerUnit: 2500, categories: ['Твердые'], imageUrls: ['https://picsum.photos/id/282/400/300', 'https://picsum.photos/id/283/400/300', 'https://picsum.photos/id/284/400/300'], unitValue: 5.3, unit: 'kg', packaging: 'головка', description: 'Итальянский твердый сыр долгого созревания. Обладает ломкой текстурой и пикантным вкусом.', allowedPortions: ['whole', 'half', 'quarter'], status: ProductStatus.Available, priceOverridesPerUnit: {}, costPrice: 1800, usp1Price: 2600, usp1UseGlobalMarkup: false },
+  { id: 2, name: 'Гауда', pricePerUnit: 1800, categories: ['Твердые'], imageUrls: ['https://picsum.photos/id/431/400/300', 'https://picsum.photos/id/432/400/300', 'https://picsum.photos/id/433/400/300'], unitValue: 2.1, unit: 'kg', packaging: 'головка', description: 'Популярный голландский сыр с мягким сливочным вкусом. Идеален для бутербродов и закусок.', allowedPortions: ['whole', 'half'], status: ProductStatus.Available, priceOverridesPerUnit: {}, costPrice: 1200, usp1UseGlobalMarkup: true },
+  { id: 3, name: 'Бри', pricePerUnit: 2200, categories: ['Мягкие'], imageUrls: ['https://picsum.photos/id/435/400/300', 'https://picsum.photos/id/436/400/300', 'https://picsum.photos/id/437/400/300'], unitValue: 1.2, unit: 'kg', packaging: 'головка', description: 'Французский мягкий сыр с корочкой из белой плесени. Имеет нежный грибной аромат.', allowedPortions: ['whole'], status: ProductStatus.Available, priceOverridesPerUnit: {}, costPrice: 1600, usp1UseGlobalMarkup: true },
+  { id: 4, name: 'Камамбер', pricePerUnit: 480, categories: ['Мягкие'], imageUrls: ['https://picsum.photos/id/312/400/300', 'https://picsum.photos/id/313/400/300', 'https://picsum.photos/id/314/400/300'], unitValue: 1, unit: 'pcs', packaging: 'упаковка', description: 'Знаменитый французский сыр с кремовой текстурой и насыщенным вкусом. Часто запекают целиком.', allowedPortions: ['whole'], status: ProductStatus.Available, priceOverridesPerUnit: {}, costPrice: 350, usp1UseGlobalMarkup: true, badge: 'ХИТ' },
+  { id: 5, name: 'Рокфор', pricePerUnit: 3500, categories: ['С плесенью', 'Козьи и овечьи'], imageUrls: ['https://picsum.photos/id/1060/400/300', 'https://picsum.photos/id/1061/400/300'], unitValue: 3.5, unit: 'kg', packaging: 'головка', description: 'Овечий сыр с голубой плесенью из Франции. Отличается острым, соленым вкусом и ярким ароматом.', allowedPortions: ['whole', 'half', 'quarter'], status: ProductStatus.Available, priceOverridesPerUnit: {}, costPrice: 2800, usp1UseGlobalMarkup: true },
+  { id: 6, name: 'Горгонзола', pricePerUnit: 3200, categories: ['С плесенью'], imageUrls: ['https://picsum.photos/id/1080/400/300', 'https://picsum.photos/id/1081/400/300', 'https://picsum.photos/id/1082/400/300'], unitValue: 1.5, unit: 'kg', packaging: 'головка', description: 'Итальянский голубой сыр. Бывает двух видов: сладкий (dolce) и пикантный (piccante).', allowedPortions: ['whole', 'half'], status: ProductStatus.Available, priceOverridesPerUnit: {}, costPrice: 2500, usp1UseGlobalMarkup: true },
+  { id: 7, name: 'Шевр', pricePerUnit: 560, categories: ['Козьи и овечьи'], imageUrls: ['https://picsum.photos/id/203/400/300', 'https://picsum.photos/id/204/400/300'], unitValue: 1, unit: 'pcs', packaging: 'штука', description: 'Французский козий сыр с характерной кислинкой и нежной, творожистой текстурой.', allowedPortions: ['whole'], status: ProductStatus.Available, priceOverridesPerUnit: {}, costPrice: 400, usp1UseGlobalMarkup: true },
+  { id: 8, name: 'Фета', pricePerUnit: 300, categories: ['Козьи и овечьи'], imageUrls: ['https://picsum.photos/id/375/400/300', 'https://picsum.photos/id/376/400/300', 'https://picsum.photos/id/377/400/300'], unitValue: 200, unit: 'g', packaging: 'упаковка', description: 'Греческий рассольный сыр из овечьего молока. Незаменимый ингредиент греческого салата.', allowedPortions: ['whole'], status: ProductStatus.Available, priceOverridesPerUnit: {}, costPrice: 200, usp1UseGlobalMarkup: true },
 ];
 
 
-const CartIcon: React.FC<{className?: string}> = ({className}) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-    </svg>
-);
+const TruckIcon: React.FC<{ className?: string; itemCount?: number }> = ({ className, itemCount = 0 }) => {
+    const MAX_BOXES = 15; // 5 columns, 3 rows
+    const colors = ['#FBBF24', '#34D399', '#60A5FA', '#F87171', '#A78BFA'];
+
+    const renderBoxes = () => {
+        const boxes = [];
+        const numBoxes = Math.min(itemCount, MAX_BOXES);
+        
+        const bedX = 1.5;
+        const bedWidth = 11;
+        const bedHeight = 4;
+        const bedBottomY = 16.5;
+
+        const boxSize = 2;
+        const boxSpacing = 0.2;
+        const cols = 5;
+        
+        for (let i = 0; i < numBoxes; i++) {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            
+            const x = bedX + col * (boxSize + boxSpacing);
+            const y = bedBottomY - (row + 1) * (boxSize + boxSpacing) + boxSpacing;
+
+            boxes.push(
+                <rect 
+                    key={i} 
+                    x={x} 
+                    y={y} 
+                    width={boxSize} 
+                    height={boxSize} 
+                    fill={colors[i % colors.length]}
+                    rx="0.2"
+                />
+            );
+        }
+        return boxes;
+    };
+
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+            {/* Render boxes inside the cargo area */}
+            {renderBoxes()}
+            
+            {/* Truck outline */}
+            <path strokeLinecap="round" strokeLinejoin="round" d="M1 17h2.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 17h5.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 17h2.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M1 12h12v5H1z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 12l3-4h5v9h-8v-5z" />
+            <circle cx="5" cy="19" r="2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="16" cy="19" r="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
+};
+
 
 const UserIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -49,10 +98,17 @@ const AdminIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
-const FilterIcon: React.FC<{className?: string}> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 12.414V17a1 1 0 01-1.447.894l-2-1A1 1 0 018 16v-3.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+const ImageIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
     </svg>
+);
+
+const ImageOffIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
+  </svg>
 );
 
 interface FlyingItemProps {
@@ -99,6 +155,16 @@ const FlyingItem: React.FC<FlyingItemProps> = ({ imageUrl, startRect, endRect, o
     return <div style={style} />;
 };
 
+const simpleHash = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash.toString();
+};
+
 
 const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(() => {
@@ -107,25 +173,42 @@ const App: React.FC = () => {
         let parsed = JSON.parse(savedProducts);
         // Migration for users with old data structures
         if (parsed.length > 0 && (parsed[0].hasOwnProperty('isVisible') || parsed[0].hasOwnProperty('pricePerKg'))) {
-            return parsed.map((p: any) => ({
-                id: p.id,
-                name: p.name,
-                pricePerUnit: p.pricePerUnit || p.pricePerKg || 0,
-                categories: p.categories || (p.category ? [p.category] : []),
-                imageUrls: p.imageUrls || [],
-                unitValue: p.unitValue || p.weight || 1,
-                unit: p.unit || 'kg',
-                packaging: p.packaging || 'головка',
-                description: p.description || '',
-                allowedPortions: p.allowedPortions || ['whole'],
-                status: p.hasOwnProperty('isVisible') ? (p.isVisible ? ProductStatus.Available : ProductStatus.Hidden) : (p.status || ProductStatus.Available),
-                priceOverridesPerUnit: p.priceOverridesPerUnit || p.priceOverridesPerKg || p.portionPrices || {},
-            }));
+            return parsed.map((p: any) => {
+                const { isPromotion, ...rest } = p;
+                return {
+                    id: p.id,
+                    name: p.name,
+                    pricePerUnit: p.pricePerUnit || p.pricePerKg || 0,
+                    categories: p.categories || (p.category ? [p.category] : []),
+                    imageUrls: p.imageUrls || [],
+                    unitValue: p.unitValue || p.weight || 1,
+                    unit: p.unit || 'kg',
+                    packaging: p.packaging || 'головка',
+                    description: p.description || '',
+                    allowedPortions: p.allowedPortions || ['whole'],
+                    status: p.hasOwnProperty('isVisible') ? (p.isVisible ? ProductStatus.Available : ProductStatus.Hidden) : (p.status || ProductStatus.Available),
+                    priceOverridesPerUnit: p.priceOverridesPerUnit || p.priceOverridesPerKg || p.portionPrices || {},
+                    costPrice: p.costPrice,
+                    usp1Price: p.usp1Price,
+                    usp1UseGlobalMarkup: p.usp1UseGlobalMarkup !== false,
+                    badge: p.badge || (isPromotion ? 'ХИТ' : undefined),
+                    priceTiers: p.priceTiers || {},
+                };
+            });
         }
          // ensure new structure exists on clean data
-        return parsed.map((p: Product) => ({...p, priceOverridesPerUnit: p.priceOverridesPerUnit || {}}));
+        return parsed.map((p: any) => {
+          const { isPromotion, ...rest } = p;
+          return {
+            ...rest, 
+            badge: p.badge || (isPromotion ? 'ХИТ' : undefined),
+            priceOverridesPerUnit: p.priceOverridesPerUnit || {},
+            usp1UseGlobalMarkup: p.usp1UseGlobalMarkup !== false,
+            priceTiers: p.priceTiers || {},
+          }
+        });
     }
-    return INITIAL_PRODUCTS;
+    return INITIAL_PRODUCTS.map(p => ({...p, priceTiers: p.priceTiers || {} }));
   });
   const [selectedCategory, setSelectedCategory] = useState<string | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -144,9 +227,10 @@ const App: React.FC = () => {
       return Array.from(uniqueCategories).sort();
   });
   const [flyingItems, setFlyingItems] = useState<{ id: number; imageUrl: string; startRect: DOMRect }[]>([]);
+  const [showProductImages, setShowProductImages] = useState(true);
   
   const cartIconRef = useRef<HTMLButtonElement>(null);
-  const { currentUser, logout } = useContext(AuthContext);
+  const { currentUser, logout, updateUserDetails, changePassword } = useContext(AuthContext);
   
   useEffect(() => {
     localStorage.setItem('products', JSON.stringify(products));
@@ -170,7 +254,10 @@ const App: React.FC = () => {
     
     const savedUsers = localStorage.getItem('users');
     if (savedUsers) {
-        setAllUsers(JSON.parse(savedUsers));
+        let users: User[] = JSON.parse(savedUsers);
+        // Migration for customerType
+        users = users.map(u => ({ ...u, customerType: u.customerType || 'Розничный' }));
+        setAllUsers(users);
     }
   }, []);
 
@@ -181,6 +268,19 @@ const App: React.FC = () => {
 
   const totalItemsInCart = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  }, [cartItems]);
+
+  const totalCartSum = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  }, [cartItems]);
+
+  const totalCartWeight = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+        let weightInKg = 0;
+        if (item.unit === 'kg') weightInKg = item.unitValue;
+        if (item.unit === 'g') weightInKg = item.unitValue / 1000;
+        return sum + (weightInKg * item.quantity);
+    }, 0);
   }, [cartItems]);
 
   const filteredProducts = useMemo(() => {
@@ -268,6 +368,19 @@ const App: React.FC = () => {
     });
   };
 
+  const handleUpdateCartItemQuantity = (cartId: string, newQuantity: number) => {
+    setCartItems(prevItems => {
+        if (newQuantity <= 0) {
+            return prevItems.filter(item => item.cartId !== cartId);
+        }
+        return prevItems.map(item =>
+            item.cartId === cartId
+                ? { ...item, quantity: newQuantity }
+                : item
+        );
+    });
+  };
+
   const handleRemoveFromCart = (cartId: string) => {
     setCartItems(prevItems => prevItems.filter(item => item.cartId !== cartId));
   };
@@ -324,6 +437,18 @@ const App: React.FC = () => {
         localStorage.setItem('orders', JSON.stringify(updatedOrders));
     };
 
+  const updateGlobalCategories = (newCats: string[]) => {
+    setAllCategories(prevGlobalCats => {
+        const updatedCategorySet = new Set(prevGlobalCats);
+        newCats.forEach(c => {
+            if (c && c.trim()) {
+                updatedCategorySet.add(c.trim());
+            }
+        });
+        return Array.from(updatedCategorySet).sort();
+    });
+  };
+
   const handleAddNewProduct = (newProductData: Omit<Product, 'id' | 'status'>) => {
     setProducts(prevProducts => {
         const newProduct: Product = {
@@ -333,12 +458,7 @@ const App: React.FC = () => {
         };
         return [...prevProducts, newProduct];
     });
-     // Also update the global list of categories
-    setAllCategories(prevCategories => {
-        const newCategorySet = new Set(prevCategories);
-        newProductData.categories.forEach(c => newCategorySet.add(c));
-        return Array.from(newCategorySet).sort();
-    });
+    updateGlobalCategories(newProductData.categories);
   };
   
   const handleBulkAddProducts = (newProductsData: Omit<Product, 'id' | 'status'>[]) => {
@@ -350,11 +470,8 @@ const App: React.FC = () => {
 
     setProducts(prevProducts => [...prevProducts, ...newProducts]);
 
-    setAllCategories(prevCategories => {
-        const newCategorySet = new Set(prevCategories);
-        newProductsData.forEach(p => p.categories.forEach(c => newCategorySet.add(c)));
-        return Array.from(newCategorySet).sort();
-    });
+    const allNewCategories = newProductsData.flatMap(p => p.categories);
+    updateGlobalCategories(allNewCategories);
   };
 
   const handleDeleteProduct = (productId: number) => {
@@ -425,6 +542,68 @@ const App: React.FC = () => {
     );
   };
 
+  const handleUpdateProductPriceTiers = (productId: number, newPriceTiers: Product['priceTiers']) => {
+    setProducts(prevProducts =>
+        prevProducts.map(p => {
+            if (p.id === productId) {
+                return { ...p, priceTiers: newPriceTiers };
+            }
+            return p;
+        })
+    );
+  };
+
+  const handleUpdateProductCostPrice = (productId: number, newCostPrice?: number) => {
+    setProducts(prevProducts =>
+        prevProducts.map(p =>
+            p.id === productId ? { ...p, costPrice: newCostPrice } : p
+        )
+    );
+  };
+
+  const handleUpdateProductUspPrices = (productId: number, newUspPrices: { costPrice?: number; usp1Price?: number; }) => {
+    setProducts(prevProducts =>
+        prevProducts.map(p =>
+            p.id === productId ? { ...p, ...newUspPrices } : p
+        )
+    );
+  };
+  
+  const handleBulkUpdateUspPrices = (updates: { productId: number; usp1Price?: number; }[]) => {
+    const updateMap = new Map(updates.map(u => [u.productId, u]));
+    setProducts(prevProducts =>
+        prevProducts.map(p => {
+            const update = updateMap.get(p.id);
+            if (update) {
+                return { ...p, ...update };
+            }
+            return p;
+        })
+    );
+  };
+
+  const handleBulkUpdateWholesalePrices = (updates: { productId: number; newPrice: number; }[]) => {
+    const updateMap = new Map(updates.map(u => [u.productId, u.newPrice]));
+    setProducts(prevProducts =>
+        prevProducts.map(p => {
+            if (updateMap.has(p.id)) {
+                const newPrice = updateMap.get(p.id)!;
+                const newPriceTiers = { ...(p.priceTiers || {}), 'оптовый': newPrice };
+                return { ...p, priceTiers: newPriceTiers };
+            }
+            return p;
+        })
+    );
+  };
+
+  const handleUpdateProductUspMarkupFlags = (productId: number, flags: { usp1UseGlobalMarkup?: boolean; }) => {
+    setProducts(prevProducts =>
+        prevProducts.map(p =>
+            p.id === productId ? { ...p, ...flags } : p
+        )
+    );
+  };
+
   const handleUpdateProductUnitValue = (productId: number, newUnitValue: number) => {
     setProducts(prevProducts =>
         prevProducts.map(p =>
@@ -455,12 +634,22 @@ const App: React.FC = () => {
         p.id === productId ? { ...p, categories: newCategories } : p
       )
     );
-    // Also update the global list of categories
-    setAllCategories(prevCategories => {
-        const newCategorySet = new Set(prevCategories);
-        newCategories.forEach(c => newCategorySet.add(c));
-        return Array.from(newCategorySet).sort();
-    });
+    updateGlobalCategories(newCategories);
+  };
+
+  const badgeCycle: (ProductBadge | undefined)[] = [undefined, 'ХИТ', 'акция', 'мало', 'много'];
+
+  const handleCycleProductBadge = (productId: number) => {
+    setProducts(prevProducts =>
+      prevProducts.map(p => {
+        if (p.id === productId) {
+          const currentBadgeIndex = badgeCycle.findIndex(b => b === p.badge);
+          const nextBadgeIndex = (currentBadgeIndex + 1) % badgeCycle.length;
+          return { ...p, badge: badgeCycle[nextBadgeIndex] };
+        }
+        return p;
+      })
+    );
   };
 
   const handleOpenGalleryModal = (images: string[], index: number) => {
@@ -474,19 +663,104 @@ const App: React.FC = () => {
   const handleAnimationEnd = (id: number) => {
     setFlyingItems(prev => prev.filter(item => item.id !== id));
   };
+  
+  const handleAddUser = (email: string, password: string): 'success' | 'exists' => {
+    if (allUsers.some(u => u.email === email)) {
+      return 'exists';
+    }
+    const newUser: User = {
+      id: Date.now(),
+      email,
+      passwordHash: simpleHash(password),
+      isAdmin: false,
+      customerType: 'Розничный',
+    };
+    const updatedUsers = [...allUsers, newUser];
+    setAllUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    return 'success';
+  };
+
+  const handleDeleteUser = (userId: number) => {
+    const userToDelete = allUsers.find(u => u.id === userId);
+    if (!userToDelete) return;
+
+    if (userToDelete.isAdmin) {
+        alert('Нельзя удалить администратора.');
+        return;
+    }
+
+    const isConfirmed = window.confirm(`Точно хотите удалить пользователя "${userToDelete.email}"? Это действие необратимо.`);
+    if (isConfirmed) {
+        const updatedUsers = allUsers.filter(u => u.id !== userId);
+        setAllUsers(updatedUsers);
+        localStorage.setItem('users', JSON.stringify(updatedUsers));
+    }
+  };
+
+  const handleUpdateUserByAdmin = (userId: number, updates: Partial<User> & { newPassword?: string }) => {
+    const { newPassword, ...otherUpdates } = updates;
+    
+    setAllUsers(prevUsers => {
+      const updatedUsers = prevUsers.map(user => {
+        if (user.id === userId) {
+          const updatedUser = { ...user, ...otherUpdates };
+          if (newPassword) {
+            updatedUser.passwordHash = simpleHash(newPassword);
+          }
+          return updatedUser;
+        }
+        return user;
+      });
+      localStorage.setItem('users', JSON.stringify(updatedUsers));
+      return updatedUsers;
+    });
+  };
 
 
   return (
     <div className="bg-gray-50 min-h-screen font-sans">
       <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex justify-end items-center">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div className="flex items-center gap-4">
+                <button
+                    ref={cartIconRef}
+                    onClick={() => setIsCartOpen(true)}
+                    className="relative text-gray-600 hover:text-indigo-600 focus:outline-none"
+                    aria-label={`Открыть корзину, ${totalItemsInCart} шт.`}
+                >
+                    <TruckIcon className="w-10 h-10" itemCount={cartItems.length}/>
+                    {totalItemsInCart > 0 && (
+                        <span className="absolute -top-2 -right-3 flex items-center justify-center px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full">
+                            {totalItemsInCart}
+                        </span>
+                    )}
+                </button>
+                {cartItems.length > 0 && (
+                     <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 border-l border-gray-200 pl-2 sm:pl-4">
+                        <div>
+                            <div className="text-gray-500">Позиций</div>
+                            <div className="font-semibold">{cartItems.length}</div>
+                        </div>
+                        <div>
+                            <div className="text-gray-500">Вес</div>
+                             <div className="font-semibold">~{totalCartWeight.toFixed(2)} кг</div>
+                        </div>
+                         <div>
+                             <div className="text-gray-500">Сумма</div>
+                             <div className="font-semibold">{totalCartSum.toLocaleString('ru-RU')} ₽</div>
+                         </div>
+                    </div>
+                )}
+            </div>
+            
           <div className="flex items-center gap-4">
              {currentUser ? (
                  <div className="flex items-center gap-4">
                     {currentUser.isAdmin && (
                         <button onClick={() => setView(view === 'admin' ? 'shop' : 'admin')} className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-indigo-600" aria-label="Админ панель">
                             <AdminIcon className="w-6 h-6"/>
-                            <span>{view === 'admin' ? 'В магазин' : 'Админ панель'}</span>
+                            <span className="hidden sm:inline">{view === 'admin' ? 'В магазин' : 'Админ панель'}</span>
                         </button>
                     )}
                      <button onClick={() => setAccountModalOpen(true)} className="text-gray-600 hover:text-indigo-600 focus:outline-none" aria-label="Личный кабинет">
@@ -501,19 +775,6 @@ const App: React.FC = () => {
                     <button onClick={() => handleOpenAuthModal('register')} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">Регистрация</button>
                 </div>
              )}
-            <button
-                  ref={cartIconRef}
-                  onClick={() => setIsCartOpen(true)}
-                  className="relative text-gray-600 hover:text-indigo-600 focus:outline-none"
-                  aria-label={`Открыть корзину, ${totalItemsInCart} шт.`}
-              >
-                  <CartIcon className="w-8 h-8"/>
-                  {totalItemsInCart > 0 && (
-                      <span className="absolute -top-2 -right-3 flex items-center justify-center px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full">
-                          {totalItemsInCart}
-                      </span>
-                  )}
-              </button>
           </div>
         </div>
       </header>
@@ -533,41 +794,65 @@ const App: React.FC = () => {
                 onCycleStatus={handleCycleProductStatus}
                 onUpdatePortions={handleUpdateProductPortions}
                 onUpdatePrices={handleUpdateProductPrices}
+                onUpdateProductPriceTiers={handleUpdateProductPriceTiers}
+                onUpdateProductCostPrice={handleUpdateProductCostPrice}
+                onUpdateUspPrices={handleUpdateProductUspPrices}
+                onBulkUpdateUspPrices={handleBulkUpdateUspPrices}
+                onBulkUpdateWholesalePrices={handleBulkUpdateWholesalePrices}
+                onUpdateUspMarkupFlags={handleUpdateProductUspMarkupFlags}
                 onUpdateUnitValue={handleUpdateProductUnitValue}
                 onUpdateDetails={handleUpdateProductDetails}
                 onUpdateImages={handleUpdateProductImages}
                 onUpdateCategories={handleUpdateProductCategories}
                 onUpdateOrderStatus={handleUpdateOrderStatus}
+                onAddUser={handleAddUser}
+                onDeleteUser={handleDeleteUser}
+                onUpdateUserByAdmin={handleUpdateUserByAdmin}
+                onCycleBadge={handleCycleProductBadge}
               />
             </>
           ) : (
             <>
               <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-                <div className="relative mb-4">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                        </svg>
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative w-full flex-1">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Поиск по названию или описанию..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="block w-full bg-gray-100 border border-transparent rounded-full py-2 pl-10 pr-3 text-sm placeholder-gray-500 focus:outline-none focus:text-gray-900 focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            aria-label="Поиск по товарам"
+                        />
                     </div>
-                    <input
-                        type="text"
-                        placeholder="Поиск по названию или описанию..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="block w-full bg-gray-100 border border-transparent rounded-full py-2 pl-10 pr-3 text-sm placeholder-gray-500 focus:outline-none focus:text-gray-900 focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                        aria-label="Поиск по товарам"
-                    />
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <CategoryDropdown
+                            categories={allCategories}
+                            selectedCategory={selectedCategory}
+                            onSelectCategory={setSelectedCategory}
+                            displayAsIconButton={true}
+                        />
+                        <button
+                            onClick={() => setShowProductImages(s => !s)}
+                            className="p-2 rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-shrink-0"
+                            aria-label={showProductImages ? "Скрыть изображения товаров" : "Показать изображения товаров"}
+                            title={showProductImages ? "Скрыть изображения" : "Показать изображения"}
+                        >
+                            {showProductImages ? <ImageOffIcon className="w-6 h-6" /> : <ImageIcon className="w-6 h-6" />}
+                        </button>
+                    </div>
                 </div>
-                <CategoryFilter
-                  categories={allCategories}
-                  selectedCategory={selectedCategory}
-                  onSelectCategory={setSelectedCategory}
-                />
               </div>
               <ProductList 
                 products={filteredProducts} 
                 onAddToCart={handleAddToCart}
                 onOpenGalleryModal={handleOpenGalleryModal}
+                showProductImages={showProductImages}
               />
             </>
           )}
@@ -579,6 +864,7 @@ const App: React.FC = () => {
           <Cart
             cartItems={cartItems}
             onRemoveItem={handleRemoveFromCart}
+            onUpdateItemQuantity={handleUpdateCartItemQuantity}
             onClearCart={handleClearCart}
             onClose={() => setIsCartOpen(false)}
             onPlaceOrder={handlePlaceOrder}
@@ -598,6 +884,8 @@ const App: React.FC = () => {
             user={currentUser}
             orders={userOrders}
             onClose={() => setAccountModalOpen(false)}
+            onUpdateDetails={updateUserDetails}
+            onChangePassword={changePassword}
           />
       )}
 

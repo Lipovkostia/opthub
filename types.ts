@@ -13,6 +13,8 @@ export enum OrderStatus {
 export type ProductPortion = 'whole' | 'half' | 'quarter';
 export type ProductUnit = 'kg' | 'g' | 'pcs' | 'l';
 export type ProductPackaging = 'головка' | 'упаковка' | 'штука' | 'банка' | 'ящик';
+export type ProductBadge = 'ХИТ' | 'акция' | 'мало' | 'много';
+export type CustomerType = 'Розничный' | 'постоянный' | 'оптовый' | 'крупный опт' | 'средний опт';
 
 
 export interface Product {
@@ -27,10 +29,19 @@ export interface Product {
   description: string;
   allowedPortions: ProductPortion[];
   status: ProductStatus;
+  badge?: ProductBadge;
   priceOverridesPerUnit?: {
     half?: number; // Price per unit override if buying half
     quarter?: number; // Price per unit override if buying quarter
   }
+  costPrice?: number;
+  usp1Price?: number;
+  usp1UseGlobalMarkup?: boolean;
+  priceTiers?: {
+    'оптовый'?: number;
+    'средний опт'?: number;
+    'крупный опт'?: number;
+  };
 }
 
 export interface CartItem {
@@ -51,6 +62,10 @@ export interface User {
   email: string;
   passwordHash: string; // In a real app, never store plain text passwords
   isAdmin?: boolean;
+  name?: string;
+  city?: string;
+  address?: string;
+  customerType?: CustomerType;
 }
 
 // For Order History

@@ -28,7 +28,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSwitchMode }) =>
             if (result === 'success') {
                 onClose();
             } else if (result === 'not_found') {
-                setError('Пользователь с таким email не найден.');
+                setError('Пользователь с таким логином не найден.');
             } else {
                 setError('Неверный пароль.');
             }
@@ -37,7 +37,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSwitchMode }) =>
             if (result === 'success') {
                 onClose();
             } else {
-                setError('Пользователь с таким email уже существует.');
+                setError('Пользователь с таким логином уже существует.');
             }
         }
     };
@@ -56,9 +56,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSwitchMode }) =>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {error && <p className="text-red-500 text-sm">{error}</p>}
                     <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">Логин</label>
                         <input
-                            type="email"
+                            type="text"
                             id="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}

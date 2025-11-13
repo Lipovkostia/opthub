@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Product, ProductPortion, ProductStatus, ProductUnit, ProductPackaging } from '../types';
+import { Product, ProductPortion, ProductStatus, ProductUnit, ProductPackaging, ProductBadge } from '../types';
 
 interface ProductItemProps {
   product: Product;
-  onAddToCart: (product: Product, portion: ProductPortion, startRect: DOMRect) => void;
+  onAddToCart: (product: Product, portion: ProductPortion, startRect?: DOMRect) => void;
   isExpanded: boolean;
   onToggleExpand: (productId: number) => void;
   isGalleryOpen: boolean;
@@ -18,14 +18,23 @@ interface ProductItemProps {
   onUpdateDetails?: (productId: number, newDetails: { name: string; description: string; unit: ProductUnit; packaging: ProductPackaging; }) => void;
   onUpdateImages?: (productId: number, newImageUrls: string[]) => void;
   onOpenGalleryModal?: (imageUrls: string[], index: number) => void;
+  showProductImages?: boolean;
   allCategories?: string[];
   onUpdateCategories?: (productId: number, newCategories: string[]) => void;
+  onCycleBadge?: (productId: number) => void;
 }
 
 const unitDisplayMap: Record<ProductUnit, string> = { kg: 'кг', g: 'гр', pcs: 'шт', l: 'л' };
 const packagingDisplayMap: Record<ProductPackaging, string> = { головка: 'головка', упаковка: 'упаковка', штука: 'штука', банка: 'банка', ящик: 'ящик' };
 const unitOptions: ProductUnit[] = ['kg', 'g', 'pcs', 'l'];
 const packagingOptions: ProductPackaging[] = ['головка', 'упаковка', 'штука', 'банка', 'ящик'];
+
+const badgeStyles: Record<ProductBadge, { text: string; bg: string; }> = {
+    'ХИТ': { text: 'ХИТ', bg: 'bg-green-500' },
+    'акция': { text: 'акция', bg: 'bg-red-500' },
+    'мало': { text: 'мало', bg: 'bg-sky-500' },
+    'много': { text: 'много', bg: 'bg-blue-600' },
+};
 
 const FullCircleIcon: React.FC<{className?: string}> = ({className}) => (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -84,8 +93,146 @@ const PlusIcon: React.FC<{className?: string}> = ({className}) => (
     </svg>
 );
 
+// NOTE: Extracted editor components to prevent focus loss on input change.
+// Defining components inside another component's render function causes them to be
+// recreated on every render, which unmounts the old component and its state (like focus).
+// By making these separate, stable components, React can update them without remounting.
 
-const ProductItem: React.FC<ProductItemProps> = ({ product, onAddToCart, isExpanded, onToggleExpand, isGalleryOpen, onToggleGallery, isAdminView, onDeleteProduct, onCycleStatus, onUpdatePortions, onUpdatePrices, onUpdateUnitValue, onUpdateDetails, onUpdateImages, onOpenGalleryModal, allCategories, onUpdateCategories }) => {
+const PriceEditorComponent: React.FC<{
+  product: Product;
+  prices: { pricePerUnit: string; half_unit_override: string; quarter_unit_override: string; };
+  onPriceChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}> = ({ product, prices, onPriceChange, onSave, onCancel }) => (
+    <div className="mt-4 p-4 border rounded-lg bg-gray-50 space-y-4">
+      <h4 className="font-semibold text-gray-700">Редактировать цены</h4>
+      
+      <div>
+        <label htmlFor={`pricePerUnit-${product.id}`} className="block text-sm font-medium text-gray-700">Базовая цена за {unitDisplayMap[product.unit]} (₽)</label>
+        <p className="text-xs text-gray-500 mb-1">Используется для целой единицы товара и по умолчанию для порций.</p>
+        <input type="number" name="pricePerUnit" id={`pricePerUnit-${product.id}`} value={prices.pricePerUnit} onChange={onPriceChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+      </div>
+      
+      {product.unit === 'kg' && (
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-2">Специальные цены за килограмм для порций</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                  <label htmlFor={`price-half-unit-${product.id}`} className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <HalfCircleIcon className="w-4 h-4 text-gray-500"/>
+                      <span>Цена за кг (Половинка)</span>
+                  </label>
+                  <input type="number" name="half_unit_override" id={`price-half-unit-${product.id}`} value={prices.half_unit_override} onChange={onPriceChange} placeholder={product.pricePerUnit.toString()} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+              </div>
+              <div>
+                  <label htmlFor={`price-quarter-unit-${product.id}`} className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <QuarterCircleIcon className="w-4 h-4 text-gray-500"/>
+                      <span>Цена за кг (Четвертинка)</span>
+                  </label>
+                  <input type="number" name="quarter_unit_override" id={`price-quarter-unit-${product.id}`} value={prices.quarter_unit_override} onChange={onPriceChange} placeholder={product.pricePerUnit.toString()} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+              </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="flex justify-end gap-2">
+          <button onClick={onCancel} className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Отмена</button>
+          <button onClick={onSave} className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Сохранить</button>
+      </div>
+    </div>
+);
+
+
+const DetailsEditorComponent: React.FC<{
+    product: Product;
+    details: { name: string; description: string; categories: Set<string>; unit: ProductUnit; packaging: ProductPackaging; };
+    allPossibleCategories: string[];
+    newCategory: string;
+    onDetailsChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+    onCategoryToggle: (category: string) => void;
+    onNewCategoryChange: (value: string) => void;
+    onAddNewCategory: () => void;
+    onSave: () => void;
+    onCancel: () => void;
+    onDelete: () => void;
+}> = ({ product, details, allPossibleCategories, newCategory, onDetailsChange, onCategoryToggle, onNewCategoryChange, onAddNewCategory, onDelete, onSave, onCancel }) => (
+    <div className="mt-4 p-4 border rounded-lg bg-gray-50 space-y-4">
+        <h4 className="font-semibold text-gray-700">Редактировать товар</h4>
+        <div>
+            <label htmlFor={`details-name-${product.id}`} className="block text-sm font-medium text-gray-700">Название</label>
+            <input type="text" name="name" id={`details-name-${product.id}`} value={details.name} onChange={onDetailsChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+        </div>
+        <div>
+            <label htmlFor={`details-desc-${product.id}`} className="block text-sm font-medium text-gray-700">Описание</label>
+            <textarea name="description" id={`details-desc-${product.id}`} value={details.description} onChange={onDetailsChange} rows={4} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label htmlFor={`details-unit-${product.id}`} className="block text-sm font-medium text-gray-700">Ед. изм.</label>
+                <select id={`details-unit-${product.id}`} name="unit" value={details.unit} onChange={onDetailsChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    {unitOptions.map(u => <option key={u} value={u}>{unitDisplayMap[u]}</option>)}
+                </select>
+            </div>
+            <div>
+                <label htmlFor={`details-packaging-${product.id}`} className="block text-sm font-medium text-gray-700">Вид</label>
+                <select id={`details-packaging-${product.id}`} name="packaging" value={details.packaging} onChange={onDetailsChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    {packagingOptions.map(p => <option key={p} value={p}>{packagingDisplayMap[p]}</option>)}
+                </select>
+            </div>
+        </div>
+         <div>
+            <label className="block text-sm font-medium text-gray-700">Категории</label>
+            <div className="mt-2 space-y-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-white">
+                {allPossibleCategories.map(cat => (
+                    <div key={cat} className="flex items-center">
+                        <input 
+                            id={`details-cat-${product.id}-${cat}`} 
+                            type="checkbox" 
+                            checked={details.categories.has(cat)} 
+                            onChange={() => onCategoryToggle(cat)}
+                            className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        />
+                        <label htmlFor={`details-cat-${product.id}-${cat}`} className="ml-2 block text-sm text-gray-900">{cat}</label>
+                    </div>
+                ))}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+                <input 
+                    type="text" 
+                    value={newCategory} 
+                    onChange={e => onNewCategoryChange(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onAddNewCategory(); } }}
+                    placeholder="Добавить новую категорию"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <button 
+                    type="button" 
+                    onClick={onAddNewCategory}
+                    className="px-3 py-2 bg-gray-200 text-sm font-medium rounded-md hover:bg-gray-300 flex-shrink-0"
+                >
+                    Добавить
+                </button>
+            </div>
+        </div>
+        <div className="flex justify-between items-center pt-4 border-t mt-4">
+            <button 
+                type="button" 
+                onClick={onDelete}
+                className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100 rounded-md"
+            >
+                Удалить товар
+            </button>
+            <div className="flex justify-end gap-2">
+                <button onClick={onCancel} className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Отмена</button>
+                <button onClick={onSave} className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Сохранить</button>
+            </div>
+        </div>
+    </div>
+);
+
+
+const ProductItem: React.FC<ProductItemProps> = ({ product, onAddToCart, isExpanded, onToggleExpand, isGalleryOpen, onToggleGallery, isAdminView, onDeleteProduct, onCycleStatus, onUpdatePortions, onUpdatePrices, onUpdateUnitValue, onUpdateDetails, onUpdateImages, onOpenGalleryModal, showProductImages = true, allCategories, onUpdateCategories, onCycleBadge }) => {
   const [isPriceEditing, setIsPriceEditing] = useState(false);
   const [isUnitValueEditing, setIsUnitValueEditing] = useState(false);
   const [isDetailsEditing, setIsDetailsEditing] = useState(false);
@@ -176,9 +323,13 @@ const ProductItem: React.FC<ProductItemProps> = ({ product, onAddToCart, isExpan
   };
   
   const handleAddToCartClick = (portion: ProductPortion) => {
-    const rect = imgButtonRef.current?.getBoundingClientRect();
-    if (rect) {
-      onAddToCart(product, portion, rect);
+    if (showProductImages && imgButtonRef.current) {
+        const rect = imgButtonRef.current.getBoundingClientRect();
+        onAddToCart(product, portion, rect);
+    } else {
+        // Если изображения скрыты, у нас нет элемента для анимации.
+        // Вызываем onAddToCart без startRect, чтобы пропустить анимацию, но добавить товар.
+        onAddToCart(product, portion, undefined);
     }
   };
 
@@ -325,7 +476,7 @@ const ProductItem: React.FC<ProductItemProps> = ({ product, onAddToCart, isExpan
     };
 
 
-  const itemClasses = `p-3 transition-colors duration-150 flex flex-col ${product.status === ProductStatus.Hidden && isAdminView ? 'bg-gray-100 opacity-60' : 'hover:bg-gray-50'}`
+  const itemClasses = `px-3 py-[3px] transition-colors duration-150 flex flex-col ${product.status === ProductStatus.Hidden && isAdminView ? 'bg-gray-100 opacity-60' : 'hover:bg-gray-50'}`
 
   const customerButtonClasses = "flex items-center gap-1.5 text-center px-2 py-1.5 bg-indigo-100 text-indigo-700 font-semibold rounded-lg hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200";
 
@@ -344,45 +495,6 @@ const ProductItem: React.FC<ProductItemProps> = ({ product, onAddToCart, isExpan
         default: return 'Изменить статус';
     }
   }
-  
-  const PriceEditor = () => (
-    <div className="mt-4 p-4 border rounded-lg bg-gray-50 space-y-4">
-      <h4 className="font-semibold text-gray-700">Редактировать цены</h4>
-      
-      <div>
-        <label htmlFor={`pricePerUnit-${product.id}`} className="block text-sm font-medium text-gray-700">Базовая цена за {unitDisplayMap[product.unit]} (₽)</label>
-        <p className="text-xs text-gray-500 mb-1">Используется для целой единицы товара и по умолчанию для порций.</p>
-        <input type="number" name="pricePerUnit" id={`pricePerUnit-${product.id}`} value={prices.pricePerUnit} onChange={handlePriceFormChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-      </div>
-      
-      {product.unit === 'kg' && (
-        <div>
-          <p className="text-sm font-medium text-gray-700 mb-2">Специальные цены за килограмм для порций</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                  <label htmlFor={`price-half-unit-${product.id}`} className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                      <HalfCircleIcon className="w-4 h-4 text-gray-500"/>
-                      <span>Цена за кг (Половинка)</span>
-                  </label>
-                  <input type="number" name="half_unit_override" id={`price-half-unit-${product.id}`} value={prices.half_unit_override} onChange={handlePriceFormChange} placeholder={product.pricePerUnit.toString()} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-              </div>
-              <div>
-                  <label htmlFor={`price-quarter-unit-${product.id}`} className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                      <QuarterCircleIcon className="w-4 h-4 text-gray-500"/>
-                      <span>Цена за кг (Четвертинка)</span>
-                  </label>
-                  <input type="number" name="quarter_unit_override" id={`price-quarter-unit-${product.id}`} value={prices.quarter_unit_override} onChange={handlePriceFormChange} placeholder={product.pricePerUnit.toString()} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-              </div>
-          </div>
-        </div>
-      )}
-      
-      <div className="flex justify-end gap-2">
-          <button onClick={() => setIsPriceEditing(false)} className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Отмена</button>
-          <button onClick={handlePriceSave} className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Сохранить</button>
-      </div>
-    </div>
-  );
   
   const handleCategoryToggle = (category: string) => {
     setDetails(prev => {
@@ -413,95 +525,44 @@ const ProductItem: React.FC<ProductItemProps> = ({ product, onAddToCart, isExpan
     return Array.from(combined).sort();
   }, [allCategories, details.categories]);
 
-
-  const DetailsEditor = () => (
-    <div className="mt-4 p-4 border rounded-lg bg-gray-50 space-y-4">
-        <h4 className="font-semibold text-gray-700">Редактировать товар</h4>
-        <div>
-            <label htmlFor={`details-name-${product.id}`} className="block text-sm font-medium text-gray-700">Название</label>
-            <input type="text" name="name" id={`details-name-${product.id}`} value={details.name} onChange={handleDetailsFormChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-        </div>
-        <div>
-            <label htmlFor={`details-desc-${product.id}`} className="block text-sm font-medium text-gray-700">Описание</label>
-            <textarea name="description" id={`details-desc-${product.id}`} value={details.description} onChange={handleDetailsFormChange} rows={4} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label htmlFor={`details-unit-${product.id}`} className="block text-sm font-medium text-gray-700">Ед. изм.</label>
-                <select id={`details-unit-${product.id}`} name="unit" value={details.unit} onChange={handleDetailsFormChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                    {unitOptions.map(u => <option key={u} value={u}>{unitDisplayMap[u]}</option>)}
-                </select>
-            </div>
-            <div>
-                <label htmlFor={`details-packaging-${product.id}`} className="block text-sm font-medium text-gray-700">Вид</label>
-                <select id={`details-packaging-${product.id}`} name="packaging" value={details.packaging} onChange={handleDetailsFormChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                    {packagingOptions.map(p => <option key={p} value={p}>{packagingDisplayMap[p]}</option>)}
-                </select>
-            </div>
-        </div>
-         <div>
-            <label className="block text-sm font-medium text-gray-700">Категории</label>
-            <div className="mt-2 space-y-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-white">
-                {allPossibleCategories.map(cat => (
-                    <div key={cat} className="flex items-center">
-                        <input 
-                            id={`details-cat-${product.id}-${cat}`} 
-                            type="checkbox" 
-                            checked={details.categories.has(cat)} 
-                            onChange={() => handleCategoryToggle(cat)}
-                            className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                        />
-                        <label htmlFor={`details-cat-${product.id}-${cat}`} className="ml-2 block text-sm text-gray-900">{cat}</label>
-                    </div>
-                ))}
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-                <input 
-                    type="text" 
-                    value={newCategory} 
-                    onChange={e => setNewCategory(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddNewCategoryInEditor(); } }}
-                    placeholder="Добавить новую категорию"
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <button 
-                    type="button" 
-                    onClick={handleAddNewCategoryInEditor}
-                    className="px-3 py-2 bg-gray-200 text-sm font-medium rounded-md hover:bg-gray-300 flex-shrink-0"
-                >
-                    Добавить
-                </button>
-            </div>
-        </div>
-        <div className="flex justify-between items-center pt-4 border-t mt-4">
-            <button 
-                type="button" 
-                onClick={() => onDeleteProduct && onDeleteProduct(product.id)}
-                className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100 rounded-md"
-            >
-                Удалить товар
-            </button>
-            <div className="flex justify-end gap-2">
-                <button onClick={() => setIsDetailsEditing(false)} className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Отмена</button>
-                <button onClick={handleDetailsSave} className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Сохранить</button>
-            </div>
-        </div>
-    </div>
-);
-
+  const badge = product.badge;
+  const badgeInfo = badge ? badgeStyles[badge] : null;
 
   return (
     <div className={itemClasses}>
         <div className="flex gap-4">
-            <button 
-              ref={imgButtonRef}
-              onClick={() => onToggleGallery(product.id)} 
-              className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-md flex-shrink-0 mt-1"
-              aria-expanded={isGalleryOpen}
-              aria-controls={`gallery-${product.id}`}
-            >
-              <img src={product.imageUrls[0]} alt={product.name} className="w-12 h-12 object-cover rounded-md" />
-            </button>
+            {showProductImages && (
+                <div className="flex-shrink-0 mt-1 self-start">
+                    <button 
+                        ref={imgButtonRef}
+                        onClick={() => onToggleGallery(product.id)} 
+                        className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-md block"
+                        aria-expanded={isGalleryOpen}
+                        aria-controls={`gallery-${product.id}`}
+                    >
+                        <img src={product.imageUrls[0]} alt={product.name} className="w-12 h-12 object-cover rounded-md" />
+                    </button>
+                    
+                    {isAdminView ? (
+                        <button
+                            onClick={() => onCycleBadge && onCycleBadge(product.id)}
+                            className={`w-12 mt-1 py-1 text-xs font-semibold rounded-md transition-colors text-center text-white capitalize ${
+                                badgeInfo ? badgeInfo.bg : 'bg-gray-400 hover:bg-gray-500'
+                            }`}
+                        >
+                            {badgeInfo ? badgeInfo.text : 'метка'}
+                        </button>
+                    ) : (
+                        badgeInfo && (
+                            <div
+                                className={`w-12 mt-1 py-1 text-xs font-semibold rounded-md text-white text-center capitalize ${badgeInfo.bg}`}
+                            >
+                                {badgeInfo.text}
+                            </div>
+                        )
+                    )}
+                </div>
+            )}
             <div className="flex flex-col flex-grow gap-1 w-full min-w-0">
                 <div className="flex justify-between items-start gap-2">
                     <button 
@@ -727,12 +788,30 @@ const ProductItem: React.FC<ProductItemProps> = ({ product, onAddToCart, isExpan
             <>
               <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isDetailsEditing ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                   <div className="overflow-hidden">
-                     <DetailsEditor />
+                     <DetailsEditorComponent
+                       product={product}
+                       details={details}
+                       allPossibleCategories={allPossibleCategories}
+                       newCategory={newCategory}
+                       onDetailsChange={handleDetailsFormChange}
+                       onCategoryToggle={handleCategoryToggle}
+                       onNewCategoryChange={setNewCategory}
+                       onAddNewCategory={handleAddNewCategoryInEditor}
+                       onDelete={() => onDeleteProduct && onDeleteProduct(product.id)}
+                       onSave={handleDetailsSave}
+                       onCancel={() => setIsDetailsEditing(false)}
+                     />
                   </div>
               </div>
               <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isPriceEditing ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                   <div className="overflow-hidden">
-                     <PriceEditor />
+                     <PriceEditorComponent
+                        product={product}
+                        prices={prices}
+                        onPriceChange={handlePriceFormChange}
+                        onSave={handlePriceSave}
+                        onCancel={() => setIsPriceEditing(false)}
+                     />
                   </div>
               </div>
             </>

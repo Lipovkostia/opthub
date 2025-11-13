@@ -1,10 +1,12 @@
-
 import React, { useState, useMemo } from 'react';
 import { Product, ProductPortion, ProductStatus, ProductUnit, ProductPackaging, Order, User, OrderStatus } from '../types';
 import ProductList from './ProductList';
-import CategoryFilter from './CategoryFilter';
+import CategoryDropdown from './CategoryDropdown';
 import ProductTable from './ProductTable';
 import AdminOrders from './AdminOrders';
+import AdminCustomers from './AdminCustomers';
+import WholesaleProductTable from './WholesaleProductTable';
+
 
 // Make TypeScript aware of the XLSX library loaded from the CDN
 declare var XLSX: any;
@@ -20,11 +22,21 @@ interface AdminPageProps {
     onCycleStatus: (productId: number) => void;
     onUpdatePortions: (productId: number, portion: ProductPortion) => void;
     onUpdatePrices: (productId: number, newPrices: { pricePerUnit: number, priceOverridesPerUnit: Product['priceOverridesPerUnit'] }) => void;
+    onUpdateProductPriceTiers: (productId: number, priceTiers: Product['priceTiers']) => void;
+    onUpdateProductCostPrice: (productId: number, costPrice?: number) => void;
+    onUpdateUspPrices: (productId: number, newUspPrices: { costPrice?: number; usp1Price?: number; }) => void;
+    onBulkUpdateUspPrices: (updates: { productId: number; usp1Price?: number; }[]) => void;
+    onBulkUpdateWholesalePrices: (updates: { productId: number; newPrice: number; }[]) => void;
+    onUpdateUspMarkupFlags: (productId: number, flags: { usp1UseGlobalMarkup?: boolean; }) => void;
     onUpdateUnitValue: (productId: number, newUnitValue: number) => void;
     onUpdateDetails: (productId: number, newDetails: { name: string; description: string; unit: ProductUnit; packaging: ProductPackaging; }) => void;
     onUpdateImages: (productId: number, newImageUrls: string[]) => void;
     onUpdateCategories: (productId: number, newCategories: string[]) => void;
     onUpdateOrderStatus: (orderId: string, status: OrderStatus) => void;
+    onAddUser: (email: string, password: string) => 'success' | 'exists';
+    onDeleteUser: (userId: number) => void;
+    onUpdateUserByAdmin: (userId: number, updates: Partial<User> & { newPassword?: string }) => void;
+    onCycleBadge: (productId: number) => void;
 }
 
 const unitDisplayMap: Record<ProductUnit, string> = { kg: 'кг', g: 'гр', pcs: 'шт', l: 'л' };
@@ -32,8 +44,8 @@ const packagingDisplayMap: Record<ProductPackaging, string> = { головка: 
 const unitOptions: ProductUnit[] = ['kg', 'g', 'pcs', 'l'];
 const packagingOptions: ProductPackaging[] = ['головка', 'упаковка', 'штука', 'банка', 'ящик'];
 
-const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, allUsers, onAddProduct, onBulkAddProducts, onDeleteProduct, onCycleStatus, onUpdatePortions, onUpdatePrices, onUpdateUnitValue, onUpdateDetails, onUpdateImages, onUpdateCategories, onUpdateOrderStatus }) => {
-    const [activeTab, setActiveTab] = useState<'pricelist' | 'add' | 'table' | 'orders'>('pricelist');
+const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, allUsers, onAddProduct, onBulkAddProducts, onDeleteProduct, onCycleStatus, onUpdatePortions, onUpdatePrices, onUpdateProductPriceTiers, onUpdateProductCostPrice, onUpdateUspPrices, onBulkUpdateUspPrices, onBulkUpdateWholesalePrices, onUpdateUspMarkupFlags, onUpdateUnitValue, onUpdateDetails, onUpdateImages, onUpdateCategories, onUpdateOrderStatus, onAddUser, onDeleteUser, onUpdateUserByAdmin, onCycleBadge }) => {
+    const [activeTab, setActiveTab] = useState<'pricelist' | 'add' | 'table' | 'orders' | 'import' | 'customers' | 'importSheets' | 'wholesale_pricelist'>('pricelist');
     // Form state
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -52,7 +64,6 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
     const [sheetRow, setSheetRow] = useState('2');
     const [importError, setImportError] = useState('');
     const [isImporting, setIsImporting] = useState(false);
-    const [isImporterVisible, setIsImporterVisible] = useState(false);
 
     // State for Excel import
     const [uploadMessage, setUploadMessage] = useState('');
@@ -69,6 +80,9 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
     const [tableFilterCategory, setTableFilterCategory] = useState<string | 'all'>('all');
     const [tableFilterStatus, setTableFilterStatus] = useState<ProductStatus | 'all'>('all');
     const [isTableFilterVisible, setIsTableFilterVisible] = useState(false);
+    
+    // State for USP markups
+    const [uspMarkups, setUspMarkups] = useState({ usp1: '' });
 
     const adminCategories = useMemo(() => [
         ...new Set(products.map(p => p.categories).flat())
@@ -112,6 +126,34 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
     }, [products, tableSearchTerm, tableFilterCategory, tableFilterStatus]);
 
 
+    const handleApplyMarkups = () => {
+        const updates: { productId: number; usp1Price?: number; }[] = [];
+        const markup1 = parseFloat(uspMarkups.usp1);
+
+        filteredTableProducts.forEach(product => {
+            if (product.costPrice && product.costPrice > 0) {
+                const newPrices: { productId: number; usp1Price?: number; } = { productId: product.id };
+                
+                if (product.usp1UseGlobalMarkup !== false && !isNaN(markup1)) {
+                    newPrices.usp1Price = Math.round(product.costPrice * (1 + markup1 / 100));
+                }
+
+                // Only add to updates if at least one price was calculated
+                if (Object.keys(newPrices).length > 1) {
+                    updates.push(newPrices);
+                }
+            }
+        });
+
+        if (updates.length > 0) {
+            onBulkUpdateUspPrices(updates);
+            alert(`${updates.length} товаров обновлено.`);
+        } else {
+            alert('Нет товаров для обновления. Убедитесь, что у отфильтрованных товаров указана себестоимость, задан процент наценки и они используют общую наценку (%).');
+        }
+    };
+
+
     const resetForm = () => {
         setName('');
         setDescription('');
@@ -146,6 +188,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
             imageUrls: imageUrls.split(',').map(url => url.trim()).filter(url => url),
             allowedPortions,
             priceOverridesPerUnit: {}, // Initially no overrides
+            usp1UseGlobalMarkup: true,
         };
 
         onAddProduct(newProduct);
@@ -195,6 +238,19 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
         } finally {
             setIsImporting(false);
         }
+    };
+
+    const handleDownloadGSheetTemplate = () => {
+        const headers = ['Название', 'Цена за кг', 'Описание'];
+        const exampleRow = ['Сыр Бри', '2200', 'Французский мягкий сыр с корочкой из белой плесени.'];
+        const ws = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
+        // Set column widths for better readability
+        ws['!cols'] = [
+            { wch: 30 }, { wch: 15 }, { wch: 60 }
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'GSheets_Template');
+        XLSX.writeFile(wb, 'шаблон_import_gsheets.xlsx');
     };
 
     const handleDownloadTemplate = () => {
@@ -281,6 +337,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
                             imageUrls: row['URL изображений (через ;)']?.toString().split(';').map((url: string) => url.trim()).filter(Boolean) || [],
                             allowedPortions,
                             priceOverridesPerUnit: {},
+                            usp1UseGlobalMarkup: true,
                         };
                         productsToAdd.push(product);
 
@@ -308,7 +365,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
         reader.readAsArrayBuffer(file);
     };
 
-    const TabButton: React.FC<{tabId: 'pricelist' | 'add' | 'table' | 'orders', children: React.ReactNode}> = ({tabId, children}) => {
+    const TabButton: React.FC<{tabId: 'pricelist' | 'add' | 'table' | 'orders' | 'import' | 'customers' | 'importSheets' | 'wholesale_pricelist', children: React.ReactNode}> = ({tabId, children}) => {
         const isActive = activeTab === tabId;
         return (
             <button
@@ -366,8 +423,12 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
                  <div className="flex items-center space-x-3 overflow-x-auto pb-4 -mx-6 px-6" role="tablist" aria-orientation="horizontal">
                     <TabButton tabId="pricelist">Мой прайс</TabButton>
                     <TabButton tabId="table">Прайс лист таблицей</TabButton>
+                    <TabButton tabId="wholesale_pricelist">Оптовый прайс</TabButton>
                     <TabButton tabId="orders">Заказы</TabButton>
+                    <TabButton tabId="customers">Покупатели</TabButton>
                     <TabButton tabId="add">Добавить товар</TabButton>
+                    <TabButton tabId="import">Импорт Excel</TabButton>
+                    <TabButton tabId="importSheets">Импорт Sheets</TabButton>
                 </div>
             </div>
 
@@ -396,10 +457,11 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
                      </div>
                      
                      <div className="mb-6">
-                        <CategoryFilter
+                        <CategoryDropdown
                             categories={adminCategories}
                             selectedCategory={adminSelectedCategory}
                             onSelectCategory={setAdminSelectedCategory}
+                            displayAsIconButton={true}
                         />
                      </div>
                      <ProductList
@@ -415,6 +477,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
                         onUpdateImages={onUpdateImages}
                         allCategories={allCategories}
                         onUpdateCategories={onUpdateCategories}
+                        onCycleBadge={onCycleBadge}
                      />
                 </div>
             )}
@@ -472,16 +535,12 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
                                     </div>
                                     {/* Category Filter */}
                                     <div>
-                                        <label htmlFor="table-category-filter" className="block text-sm font-medium text-gray-700">Категория</label>
-                                        <select
-                                            id="table-category-filter"
-                                            value={tableFilterCategory}
-                                            onChange={(e) => setTableFilterCategory(e.target.value)}
-                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                        >
-                                            <option value="all">Все категории</option>
-                                            {allCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                        </select>
+                                        <CategoryDropdown
+                                            categories={allCategories}
+                                            selectedCategory={tableFilterCategory}
+                                            onSelectCategory={setTableFilterCategory}
+                                            label="Категория"
+                                        />
                                     </div>
                                     {/* Status Filter */}
                                     <div>
@@ -510,10 +569,30 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
                         onCycleStatus={onCycleStatus}
                         onUpdatePortions={onUpdatePortions}
                         onUpdatePrices={onUpdatePrices}
+                        onUpdateUspPrices={onUpdateUspPrices}
+                        onUpdateUspMarkupFlags={onUpdateUspMarkupFlags}
                         onUpdateUnitValue={onUpdateUnitValue}
                         onUpdateDetails={onUpdateDetails}
                         onUpdateCategories={onUpdateCategories}
                         onUpdateImages={onUpdateImages}
+                        uspMarkups={uspMarkups}
+                        setUspMarkups={setUspMarkups}
+                        onApplyMarkups={handleApplyMarkups}
+                    />
+                </div>
+            )}
+
+            {activeTab === 'wholesale_pricelist' && (
+                <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-gray-700 mb-4">Оптовый прайс-лист</h3>
+                     <p className="text-sm text-gray-600 pb-4">
+                        Вносите оптовые цены для разных типов покупателей. Кнопка "Сохранить" для каждой строки становится активной после внесения изменений.
+                     </p>
+                    <WholesaleProductTable
+                        products={products}
+                        onUpdatePriceTiers={onUpdateProductPriceTiers}
+                        onUpdateProductCostPrice={onUpdateProductCostPrice}
+                        onBulkUpdateWholesalePrices={onBulkUpdateWholesalePrices}
                     />
                 </div>
             )}
@@ -524,6 +603,18 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
                         orders={orders}
                         users={allUsers}
                         onUpdateStatus={onUpdateOrderStatus}
+                    />
+                </div>
+            )}
+
+            {activeTab === 'customers' && (
+                <div className="mt-6">
+                    <AdminCustomers
+                        users={allUsers}
+                        orders={orders}
+                        onAddUser={onAddUser}
+                        onDeleteUser={onDeleteUser}
+                        onUpdateUserByAdmin={onUpdateUserByAdmin}
                     />
                 </div>
             )}
@@ -627,64 +718,67 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
                             </div>
                         </form>
                     </div>
-
-                     {/* Excel Importer */}
-                    <div className="pt-8">
-                        <h3 className="text-lg font-semibold text-gray-700 mb-2">Массовый импорт из Excel</h3>
-                        <p className="text-sm text-gray-600 mb-4">
-                            Скачайте шаблон, заполните его и загрузите файл для добавления сразу нескольких товаров.
-                        </p>
-                        <div className="flex items-center gap-4">
-                             <button 
-                                onClick={handleDownloadTemplate} 
-                                className="px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-md hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                              >
-                                Скачать шаблон
-                              </button>
-                             <label 
-                                htmlFor="excel-upload" 
-                                className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer'}`}
-                              >
-                                {isUploading ? 'Обработка...' : 'Загрузить файл'}
-                             </label>
-                             <input id="excel-upload" type="file" className="hidden" onChange={handleFileUpload} accept=".xlsx, .xls, .csv" disabled={isUploading} />
-                        </div>
-                        {uploadMessage && <p className="mt-4 text-sm text-gray-700 bg-gray-100 p-3 rounded-md">{uploadMessage}</p>}
+                </div>
+            )}
+            
+            {activeTab === 'import' && (
+                 <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">Массовый импорт из Excel</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                        Скачайте шаблон, заполните его и загрузите файл для добавления сразу нескольких товаров.
+                    </p>
+                    <div className="flex items-center gap-4">
+                         <button 
+                            onClick={handleDownloadTemplate} 
+                            className="px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-md hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                          >
+                            Скачать шаблон
+                          </button>
+                         <label 
+                            htmlFor="excel-upload" 
+                            className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer'}`}
+                          >
+                            {isUploading ? 'Обработка...' : 'Загрузить файл'}
+                         </label>
+                         <input id="excel-upload" type="file" className="hidden" onChange={handleFileUpload} accept=".xlsx, .xls, .csv" disabled={isUploading} />
                     </div>
+                    {uploadMessage && <p className="mt-4 text-sm text-gray-700 bg-gray-100 p-3 rounded-md">{uploadMessage}</p>}
+                </div>
+            )}
 
-                    {/* Google Sheets Importer - Kept for reference */}
-                    <div className="pt-8">
-                        <button onClick={() => setIsImporterVisible(!isImporterVisible)} className="font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-2">
-                            Импорт из Google Sheets (альтернативный способ)
-                            <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 transition-transform ${isImporterVisible ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                        {isImporterVisible && (
-                            <div className="mt-4 p-4 border rounded-lg bg-gray-50 space-y-3">
-                                <p className="text-sm text-gray-600">
-                                    <b>Как использовать:</b><br/>
-                                    1. В Google Sheets: <b>Файл &gt; Поделиться &gt; Опубликовать в Интернете</b>.<br/>
-                                    2. Выберите лист и формат <b>"Comma-separated values (.csv)"</b>, нажмите "Опубликовать".<br/>
-                                    3. Скопируйте и вставьте полученную ссылку ниже.<br/>
-                                    4. Ожидаемый порядок колонок: <b>A - Название, B - Цена за кг, C - Описание</b>. (Импортер работает только для товаров в кг).
-                                </p>
-                                <div>
-                                    <label htmlFor="sheetUrl" className="block text-sm font-medium text-gray-700">URL из Google Sheets (.csv)</label>
-                                    <input type="url" id="sheetUrl" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-                                </div>
-                                <div className="flex items-end gap-4">
-                                    <div className="flex-grow">
-                                        <label htmlFor="sheetRow" className="block text-sm font-medium text-gray-700">Номер строки для импорта</label>
-                                        <input type="number" id="sheetRow" value={sheetRow} onChange={e => setSheetRow(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
-                                    </div>
-                                    <button type="button" onClick={handleGoogleSheetImport} disabled={isImporting} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400">
-                                        {isImporting ? 'Загрузка...' : 'Загрузить данные'}
-                                    </button>
-                                </div>
-                                {importError && <p className="text-red-500 text-sm mt-2">{importError}</p>}
+            {activeTab === 'importSheets' && (
+                 <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-gray-700 mb-4">Импорт из Google Sheets</h3>
+                    <div className="p-4 border rounded-lg bg-gray-50 space-y-3">
+                        <div className="flex justify-between items-start gap-4">
+                            <p className="text-sm text-gray-600">
+                                <b>Как использовать:</b><br/>
+                                1. В Google Sheets: <b>Файл &gt; Поделиться &gt; Опубликовать в Интернете</b>.<br/>
+                                2. Выберите лист и формат <b>"Comma-separated values (.csv)"</b>, нажмите "Опубликовать".<br/>
+                                3. Скопируйте и вставьте полученную ссылку ниже.<br/>
+                                4. Ожидаемый порядок колонок: <b>A - Название, B - Цена за кг, C - Описание</b>. (Импортер работает только для товаров в кг).
+                            </p>
+                             <button 
+                                onClick={handleDownloadGSheetTemplate} 
+                                className="px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-md hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 whitespace-nowrap flex-shrink-0"
+                              >
+                                Скачать шаблон для заполнения
+                              </button>
+                        </div>
+                        <div>
+                            <label htmlFor="sheetUrl" className="block text-sm font-medium text-gray-700">URL из Google Sheets (.csv)</label>
+                            <input type="url" id="sheetUrl" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
+                        </div>
+                        <div className="flex items-end gap-4">
+                            <div className="flex-grow">
+                                <label htmlFor="sheetRow" className="block text-sm font-medium text-gray-700">Номер строки для импорта</label>
+                                <input type="number" id="sheetRow" value={sheetRow} onChange={e => setSheetRow(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
                             </div>
-                        )}
+                            <button type="button" onClick={handleGoogleSheetImport} disabled={isImporting} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400">
+                                {isImporting ? 'Загрузка...' : 'Загрузить данные'}
+                            </button>
+                        </div>
+                        {importError && <p className="text-red-500 text-sm mt-2">{importError}</p>}
                     </div>
                 </div>
             )}

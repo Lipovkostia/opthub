@@ -18,6 +18,8 @@ interface AuthContextType {
   login: (email: string, password: string) => 'success' | 'not_found' | 'wrong_password';
   register: (email: string, password: string) => 'success' | 'exists';
   logout: () => void;
+  updateUserDetails: (userId: number, details: { name: string; city: string; address: string; }) => void;
+  changePassword: (userId: number, oldPassword: string, newPassword: string) => 'success' | 'wrong_password';
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -25,6 +27,8 @@ export const AuthContext = createContext<AuthContextType>({
   login: () => 'not_found',
   register: () => 'exists',
   logout: () => {},
+  updateUserDetails: () => {},
+  changePassword: () => 'wrong_password',
 });
 
 interface AuthProviderProps {
@@ -40,19 +44,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const storedUsers = localStorage.getItem('users');
     let usersData: User[] = storedUsers ? JSON.parse(storedUsers) : [];
     
-    const adminEmail = 'admin@cheese.com';
-    const adminExists = usersData.some(u => u.email === adminEmail);
+    // Migration for customerType
+    usersData = usersData.map(u => ({ ...u, customerType: u.customerType || 'Розничный' }));
+
+    // Clean up old admin user
+    usersData = usersData.filter(u => u.email !== 'admin@cheese.com');
+
+    const adminLogin = '1';
+    const adminExists = usersData.some(u => u.email === adminLogin);
 
     if (!adminExists) {
         const adminUser: User = {
             id: Date.now(),
-            email: adminEmail,
-            passwordHash: simpleHash('admin123'),
+            email: adminLogin,
+            passwordHash: simpleHash('1'),
             isAdmin: true,
+            customerType: 'Розничный',
         };
         usersData.push(adminUser);
-        localStorage.setItem('users', JSON.stringify(usersData));
     }
+    localStorage.setItem('users', JSON.stringify(usersData));
     setUsers(usersData);
 
     // Check for a logged-in user in sessionStorage
@@ -84,6 +95,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       email,
       passwordHash: simpleHash(password),
       isAdmin: false, // Regular users are not admins
+      customerType: 'Розничный',
     };
     const updatedUsers = [...users, newUser];
     setUsers(updatedUsers);
@@ -99,9 +111,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setCurrentUser(null);
     sessionStorage.removeItem('currentUser');
   };
+  
+  const updateUserDetails = (userId: number, details: { name: string; city: string; address: string; }) => {
+    const updatedUsers = users.map(u => {
+        if (u.id === userId) {
+            return { ...u, ...details };
+        }
+        return u;
+    });
+    setUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+
+    if (currentUser && currentUser.id === userId) {
+        const updatedCurrentUser = { ...currentUser, ...details };
+        setCurrentUser(updatedCurrentUser);
+        sessionStorage.setItem('currentUser', JSON.stringify(updatedCurrentUser));
+    }
+  };
+
+  const changePassword = (userId: number, oldPassword: string, newPassword: string): 'success' | 'wrong_password' => {
+    const user = users.find(u => u.id === userId);
+    if (!user || user.passwordHash !== simpleHash(oldPassword)) {
+        return 'wrong_password';
+    }
+
+    const updatedUsers = users.map(u => {
+        if (u.id === userId) {
+            return { ...u, passwordHash: simpleHash(newPassword) };
+        }
+        return u;
+    });
+    setUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    return 'success';
+  };
+
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, register, logout }}>
+    <AuthContext.Provider value={{ currentUser, login, register, logout, updateUserDetails, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
