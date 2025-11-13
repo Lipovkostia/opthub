@@ -82,7 +82,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = (email: string, password: string): 'success' | 'not_found' | 'wrong_password' => {
-    const user = users.find(u => u.email === email);
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) return 'not_found';
+    const user = users.find(u => u.email === trimmedEmail);
     if (!user) {
       return 'not_found';
     }
@@ -95,12 +97,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const register = (email: string, password: string): 'success' | 'exists' => {
-    if (users.some(u => u.email === email)) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) return 'exists'; // Or some other error for empty email
+    if (users.some(u => u.email === trimmedEmail)) {
       return 'exists';
     }
     const newUser: User = {
       id: Date.now(),
-      email,
+      email: trimmedEmail,
       passwordHash: simpleHash(password),
       isAdmin: false, // Regular users are not admins
       customerType: 'Розничный',
@@ -155,12 +159,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const addUserByAdmin = (email: string, password: string): 'success' | 'exists' => {
-    if (users.some(u => u.email === email)) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) return 'exists';
+    if (users.some(u => u.email === trimmedEmail)) {
       return 'exists';
     }
     const newUser: User = {
       id: Date.now(),
-      email,
+      email: trimmedEmail,
       passwordHash: simpleHash(password),
       isAdmin: false,
       customerType: 'Розничный',
