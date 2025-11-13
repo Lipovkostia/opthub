@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { GoogleGenAI } from '@google/genai';
 import { Product, ProductPortion, ProductStatus, ProductUnit, ProductPackaging, Order, User, OrderStatus } from '../types';
 import ProductList from './ProductList';
 import CategoryDropdown from './CategoryDropdown';
@@ -58,6 +59,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
     const [allowQuarter, setAllowQuarter] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
     const [newCategory, setNewCategory] = useState('');
+    const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
     // State for Google Sheets import
     const [sheetUrl, setSheetUrl] = useState('');
@@ -194,6 +196,31 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
         onAddProduct(newProduct);
         alert('Товар успешно добавлен!');
         resetForm();
+    };
+    
+    const handleGenerateDescription = async () => {
+        if (!name.trim()) {
+            alert('Пожалуйста, сначала введите название товара.');
+            return;
+        }
+        setIsGeneratingDescription(true);
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const prompt = `Напиши краткое, привлекательное описание для сыра "${name}" для интернет-магазина. Описание должно быть на русском языке.`;
+            
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+            
+            setDescription(response.text);
+
+        } catch (error) {
+            console.error("Error generating description:", error);
+            alert('Не удалось сгенерировать описание. Попробуйте еще раз.');
+        } finally {
+            setIsGeneratingDescription(false);
+        }
     };
     
     const handleGoogleSheetImport = async () => {
@@ -630,7 +657,12 @@ const AdminPage: React.FC<AdminPageProps> = ({ products, allCategories, orders, 
                                 <input type="text" id="name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
                             </div>
                             <div>
-                                <label htmlFor="description" className="block text-sm font-medium text-gray-700">Описание</label>
+                                <div className="flex justify-between items-center">
+                                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">Описание</label>
+                                    <button type="button" onClick={handleGenerateDescription} disabled={isGeneratingDescription || !name.trim()} className="text-xs text-indigo-600 hover:text-indigo-800 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center gap-1">
+                                        {isGeneratingDescription ? 'Генерация...' : <>✨ Сгенерировать</>}
+                                    </button>
+                                </div>
                                 <textarea id="description" value={description} onChange={e => setDescription(e.target.value)} required rows={3} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
