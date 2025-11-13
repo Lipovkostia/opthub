@@ -239,7 +239,6 @@ const ProductItem: React.FC<ProductItemProps> = ({ product, onAddToCart, isExpan
   const [isCameraActive, setIsCameraActive] = useState(false);
   
   const imgButtonRef = useRef<HTMLButtonElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -431,10 +430,6 @@ const ProductItem: React.FC<ProductItemProps> = ({ product, onAddToCart, isExpan
                 alert("Не удалось загрузить изображения.");
             }
         }
-    };
-    
-    const handleAddFromFileClick = () => {
-        fileInputRef.current?.click();
     };
     
     const handleOpenCamera = async () => {
@@ -756,19 +751,19 @@ const ProductItem: React.FC<ProductItemProps> = ({ product, onAddToCart, isExpan
                         <div className="flex gap-2 justify-center pt-2 border-t mt-2">
                            <input 
                               type="file" 
-                              ref={fileInputRef} 
+                              id={`product-item-file-upload-${product.id}`}
                               onChange={handleFileSelect} 
                               accept="image/*" 
                               multiple
                               className="hidden" 
                            />
-                           <button 
-                              onClick={handleAddFromFileClick}
-                              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                           <label 
+                              htmlFor={`product-item-file-upload-${product.id}`}
+                              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer"
                            >
                                 <PlusIcon className="w-4 h-4" />
                                 <span>Добавить фото</span>
-                           </button>
+                           </label>
                            <button 
                               onClick={handleOpenCamera}
                               className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"

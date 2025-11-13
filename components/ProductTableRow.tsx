@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Product, ProductPortion, ProductStatus, ProductUnit, ProductPackaging } from '../types';
 
@@ -72,7 +73,6 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({ product, allCategorie
     const [isImageEditorOpen, setImageEditorOpen] = useState(false);
     const [isCameraActive, setIsCameraActive] = useState(false);
     const imageEditorRef = useRef<HTMLDivElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -255,10 +255,6 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({ product, allCategorie
             }
         }
     };
-
-    const handleAddFromFileClick = () => {
-        fileInputRef.current?.click();
-    };
     
     const handleOpenCamera = async () => {
         try {
@@ -345,11 +341,11 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({ product, allCategorie
                                         ))}
                                     </div>
                                     <div className="flex gap-2 justify-center pt-2 border-t mt-2">
-                                       <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" multiple className="hidden" />
-                                       <button onClick={handleAddFromFileClick} className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                                       <input type="file" id={`product-table-row-file-upload-${product.id}`} onChange={handleFileSelect} accept="image/*" multiple className="hidden" />
+                                       <label htmlFor={`product-table-row-file-upload-${product.id}`} className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer">
                                             <PlusIcon className="w-4 h-4" />
                                             <span>Фото</span>
-                                       </button>
+                                       </label>
                                        <button onClick={handleOpenCamera} className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
                                             <CameraIcon className="w-4 h-4" />
                                             <span>Снимок</span>
