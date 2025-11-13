@@ -15,20 +15,28 @@ const simpleHash = (str: string) => {
 
 interface AuthContextType {
   currentUser: User | null;
+  users: User[];
   login: (email: string, password: string) => 'success' | 'not_found' | 'wrong_password';
   register: (email: string, password: string) => 'success' | 'exists';
   logout: () => void;
   updateUserDetails: (userId: number, details: { name: string; city: string; address: string; }) => void;
   changePassword: (userId: number, oldPassword: string, newPassword: string) => 'success' | 'wrong_password';
+  addUserByAdmin: (email: string, password: string) => 'success' | 'exists';
+  deleteUserByAdmin: (userId: number) => void;
+  updateUserByAdmin: (userId: number, updates: Partial<User> & { newPassword?: string }) => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
   currentUser: null,
+  users: [],
   login: () => 'not_found',
   register: () => 'exists',
   logout: () => {},
   updateUserDetails: () => {},
   changePassword: () => 'wrong_password',
+  addUserByAdmin: () => 'exists',
+  deleteUserByAdmin: () => {},
+  updateUserByAdmin: () => {},
 });
 
 interface AuthProviderProps {
@@ -146,9 +154,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return 'success';
   };
 
+  const addUserByAdmin = (email: string, password: string): 'success' | 'exists' => {
+    if (users.some(u => u.email === email)) {
+      return 'exists';
+    }
+    const newUser: User = {
+      id: Date.now(),
+      email,
+      passwordHash: simpleHash(password),
+      isAdmin: false,
+      customerType: 'Розничный',
+    };
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    return 'success';
+  };
+
+  const deleteUserByAdmin = (userId: number) => {
+    const updatedUsers = users.filter(u => u.id !== userId);
+    setUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+  };
+
+  const updateUserByAdmin = (userId: number, updates: Partial<User> & { newPassword?: string }) => {
+    const { newPassword, ...otherUpdates } = updates;
+    
+    const updatedUsers = users.map(user => {
+      if (user.id === userId) {
+        const updatedUser = { ...user, ...otherUpdates };
+        if (newPassword) {
+          updatedUser.passwordHash = simpleHash(newPassword);
+        }
+        return updatedUser;
+      }
+      return user;
+    });
+    setUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+  };
+
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, register, logout, updateUserDetails, changePassword }}>
+    <AuthContext.Provider value={{ currentUser, users, login, register, logout, updateUserDetails, changePassword, addUserByAdmin, deleteUserByAdmin, updateUserByAdmin }}>
       {children}
     </AuthContext.Provider>
   );

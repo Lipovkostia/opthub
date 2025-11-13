@@ -155,17 +155,6 @@ const FlyingItem: React.FC<FlyingItemProps> = ({ imageUrl, startRect, endRect, o
     return <div style={style} />;
 };
 
-const simpleHash = (str: string) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = (hash << 5) - hash + char;
-        hash |= 0; // Convert to 32bit integer
-    }
-    return hash.toString();
-};
-
-
 const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(() => {
     const savedProducts = localStorage.getItem('products');
@@ -219,7 +208,6 @@ const App: React.FC = () => {
   const [isAccountModalOpen, setAccountModalOpen] = useState(false);
   const [view, setView] = useState<'shop' | 'admin'>('shop');
   const [orders, setOrders] = useState<Order[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [galleryModalInfo, setGalleryModalInfo] = useState<{images: string[], index: number} | null>(null);
   const [allCategories, setAllCategories] = useState<string[]>(() => {
       const uniqueCategories = new Set(INITIAL_CATEGORIES);
@@ -230,7 +218,16 @@ const App: React.FC = () => {
   const [showProductImages, setShowProductImages] = useState(true);
   
   const cartIconRef = useRef<HTMLButtonElement>(null);
-  const { currentUser, logout, updateUserDetails, changePassword } = useContext(AuthContext);
+  const { 
+    currentUser, 
+    logout, 
+    updateUserDetails, 
+    changePassword, 
+    users,
+    addUserByAdmin,
+    deleteUserByAdmin,
+    updateUserByAdmin,
+  } = useContext(AuthContext);
   
   useEffect(() => {
     localStorage.setItem('products', JSON.stringify(products));
@@ -250,14 +247,6 @@ const App: React.FC = () => {
       // Add default status to old orders for migration
       const ordersWithStatus = parsedOrders.map(o => ({...o, status: o.status || OrderStatus.New }));
       setOrders(ordersWithStatus);
-    }
-    
-    const savedUsers = localStorage.getItem('users');
-    if (savedUsers) {
-        let users: User[] = JSON.parse(savedUsers);
-        // Migration for customerType
-        users = users.map(u => ({ ...u, customerType: u.customerType || 'Розничный' }));
-        setAllUsers(users);
     }
   }, []);
 
@@ -665,24 +654,11 @@ const App: React.FC = () => {
   };
   
   const handleAddUser = (email: string, password: string): 'success' | 'exists' => {
-    if (allUsers.some(u => u.email === email)) {
-      return 'exists';
-    }
-    const newUser: User = {
-      id: Date.now(),
-      email,
-      passwordHash: simpleHash(password),
-      isAdmin: false,
-      customerType: 'Розничный',
-    };
-    const updatedUsers = [...allUsers, newUser];
-    setAllUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    return 'success';
+    return addUserByAdmin(email, password);
   };
 
   const handleDeleteUser = (userId: number) => {
-    const userToDelete = allUsers.find(u => u.id === userId);
+    const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete) return;
 
     if (userToDelete.isAdmin) {
@@ -692,29 +668,12 @@ const App: React.FC = () => {
 
     const isConfirmed = window.confirm(`Точно хотите удалить пользователя "${userToDelete.email}"? Это действие необратимо.`);
     if (isConfirmed) {
-        const updatedUsers = allUsers.filter(u => u.id !== userId);
-        setAllUsers(updatedUsers);
-        localStorage.setItem('users', JSON.stringify(updatedUsers));
+        deleteUserByAdmin(userId);
     }
   };
 
   const handleUpdateUserByAdmin = (userId: number, updates: Partial<User> & { newPassword?: string }) => {
-    const { newPassword, ...otherUpdates } = updates;
-    
-    setAllUsers(prevUsers => {
-      const updatedUsers = prevUsers.map(user => {
-        if (user.id === userId) {
-          const updatedUser = { ...user, ...otherUpdates };
-          if (newPassword) {
-            updatedUser.passwordHash = simpleHash(newPassword);
-          }
-          return updatedUser;
-        }
-        return user;
-      });
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-      return updatedUsers;
-    });
+    updateUserByAdmin(userId, updates);
   };
 
 
@@ -787,7 +746,7 @@ const App: React.FC = () => {
                 products={products}
                 allCategories={allCategories}
                 orders={orders}
-                allUsers={allUsers}
+                allUsers={users}
                 onAddProduct={handleAddNewProduct}
                 onBulkAddProducts={handleBulkAddProducts}
                 onDeleteProduct={handleDeleteProduct}
